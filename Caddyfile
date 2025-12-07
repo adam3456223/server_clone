@@ -1,4 +1,13 @@
 {{SUBDOMAIN}}.{{N8N_DOMAIN_NAME}} {
+    # Metrics endpoint - restricted to your monitoring server IP
+    @metrics {
+        path /metrics
+        remote_ip {{LOGGING_SERVER_IP}}
+    }
+    handle @metrics {
+        reverse_proxy n8n:5678
+    }
+    # Proxy all other requests to n8n
     reverse_proxy n8n:5678 {
         flush_interval -1
     }
@@ -13,4 +22,49 @@
 		# Keep this for streaming responses
 		flush_interval -1
 	}
+}
+
+{{VIBE_DOMAIN}} {
+    reverse_proxy vibe-apps:5173 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+        header_up Upgrade {http.request.header.Upgrade}
+        header_up Connection {http.request.header.Connection}
+    }
+}
+
+{{FUNCTIONS_DOMAIN}} {
+    route /n8n_stream* {
+        uri strip_prefix /n8n_stream
+        reverse_proxy supabase-edge-function-n8n-stream:9000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+    route /prep-llm-payload* {
+        uri strip_prefix /prep-llm-payload
+        reverse_proxy supabase-edge-function-prep-llm:9000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+    route /pre-cache* {
+        uri strip_prefix /pre-cache
+        reverse_proxy supabase-edge-function-pre-cache:9000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+    route /functions* {
+        uri strip_prefix /functions
+        reverse_proxy supabase-edge-function-functions:9000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
 }
