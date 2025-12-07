@@ -273,6 +273,7 @@ EOL
     log "--> Overwriting vibe-apps files with templates..."
     cp ${script_dir}/vibe-apps_docker-compose.yml /home/vibe-apps/docker-compose.yml
     cp ${script_dir}/vibe-apps_vite.config.js /home/vibe-apps/vite.config.js
+    cp ${script_dir}/vibe-apps_Dockerfile /home/vibe-apps/Dockerfile
     
     log "--> Configuring vibe-apps template files..."
     sed -i "s|{{VIBE_DOMAIN}}|${VIBE_DOMAIN}|g" /home/vibe-apps/vite.config.js
