@@ -43,7 +43,7 @@ get_user_config() {
         log "--> Found existing config file '$CLIENT_CONFIG_FILE'. Validating..."
         source "$CLIENT_CONFIG_FILE"
         required_vars=(
-            "N8N_DOMAIN_NAME" "NETWORK_NAME" "SUPABASE_DOMAIN" "SSL_EMAIL" "SERVER_PUBLIC_IP" "LOGGING_SERVER_IP"
+            "CLIENT_DOMAIN" "NETWORK_NAME" "SUPABASE_DOMAIN" "SSL_EMAIL" "SERVER_PUBLIC_IP" "LOGGING_SERVER_IP"
             "GENERIC_TIMEZONE" "N8N_DB_PASSWORD" "SUBDOMAIN" "SUPABASE_POSTGRES_PASSWORD" "JWT_SECRET" "ANON_KEY" "SERVICE_ROLE_KEY"
             "DASHBOARD_USERNAME" "DASHBOARD_PASSWORD" "SECRET_KEY_BASE" "VAULT_ENC_KEY" "VIBE_DOMAIN" "FUNCTIONS_DOMAIN"
             "PROMETHEUS_DOMAIN" "GRAFANA_DOMAIN" "GRAFANA_ADMIN_PASSWORD" "GITHUB_TOKEN"
@@ -109,7 +109,7 @@ get_user_config() {
         log "--> Saving configuration to '$CLIENT_CONFIG_FILE' for future use."
         cat > "$CLIENT_CONFIG_FILE" << EOL
 # Client Server Configuration
-N8N_DOMAIN_NAME="${CLIENT_DOMAIN}"
+CLIENT_DOMAIN="${CLIENT_DOMAIN}"
 SUBDOMAIN="${SUBDOMAIN}"
 NETWORK_NAME="${NETWORK_NAME}"
 SUPABASE_DOMAIN="${SUPABASE_DOMAIN}"
@@ -286,7 +286,7 @@ PUBLIC_SUPABASE_ANON_KEY=${ANON_KEY}
 EOL
     log "--> Configuring copied files with client variables..."
     # Process n8n files
-    sed -i "s|{{N8N_DOMAIN_NAME}}|${N8N_DOMAIN_NAME}|g" /home/n8n/.env
+    sed -i "s|{{CLIENT_DOMAIN}}|${CLIENT_DOMAIN}|g" /home/n8n/.env
     sed -i "s|{{SUBDOMAIN}}|${SUBDOMAIN}|g" /home/n8n/.env
     sed -i "s|{{SSL_EMAIL}}|${SSL_EMAIL}|g" /home/n8n/.env
     sed -i "s|{{YOUR_DROPLET_IP}}|${SERVER_PUBLIC_IP}|g" /home/n8n/.env
@@ -294,7 +294,7 @@ EOL
     sed -i "s|{{GENERIC_TIMEZONE}}|${GENERIC_TIMEZONE}|g" /home/n8n/.env
     sed -i "s|{{NETWORK}}|${NETWORK_NAME}|g" /home/n8n/docker-compose.yml
     sed -i "s|{{SUBDOMAIN}}|${SUBDOMAIN}|g" /home/n8n/Caddyfile
-    sed -i "s|{{N8N_DOMAIN_NAME}}|${N8N_DOMAIN_NAME}|g" /home/n8n/Caddyfile
+    sed -i "s|{{CLIENT_DOMAIN}}|${CLIENT_DOMAIN}|g" /home/n8n/Caddyfile
     sed -i "s|{{SUPABASE_DOMAIN}}|${SUPABASE_DOMAIN}|g" /home/n8n/Caddyfile
     sed -i "s|{{VIBE_DOMAIN}}|${VIBE_DOMAIN}|g" /home/n8n/Caddyfile
     sed -i "s|{{FUNCTIONS_DOMAIN}}|${FUNCTIONS_DOMAIN}|g" /home/n8n/Caddyfile
@@ -310,7 +310,7 @@ EOL
     
     # Process Prometheus config
     sed -i "s|{{SUBDOMAIN}}|${SUBDOMAIN}|g" /home/prometheus/config/prometheus.yml
-    sed -i "s|{{N8N_DOMAIN_NAME}}|${N8N_DOMAIN_NAME}|g" /home/prometheus/config/prometheus.yml
+    sed -i "s|{{CLIENT_DOMAIN}}|${CLIENT_DOMAIN}|g" /home/prometheus/config/prometheus.yml
     
     # Process Grafana config
     sed -i "s|{{GRAFANA_DOMAIN}}|${GRAFANA_DOMAIN}|g" /home/grafana/docker-compose.yml
@@ -408,8 +408,8 @@ main() {
     log "--------------------------------------------------"
     log ""
     log "Your services should be available shortly at:"
-    log "n8n:                https://${SUBDOMAIN}.${N8N_DOMAIN_NAME}"
-    log "n8n metrics:        https://${SUBDOMAIN}.${N8N_DOMAIN_NAME}/metrics (restricted to ${LOGGING_SERVER_IP})"
+    log "n8n:                https://${SUBDOMAIN}.${CLIENT_DOMAIN}"
+    log "n8n metrics:        https://${SUBDOMAIN}.${CLIENT_DOMAIN}/metrics (restricted to ${LOGGING_SERVER_IP})"
     log "Supabase:           https://${SUPABASE_DOMAIN}"
     log "Vibe Apps:          https://${VIBE_DOMAIN}"
     log "Edge Functions:     https://${FUNCTIONS_DOMAIN}"
