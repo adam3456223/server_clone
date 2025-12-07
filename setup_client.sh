@@ -83,6 +83,7 @@ get_user_config() {
         read -p "Enter the desired username for the Supabase dashboard admin: " DASHBOARD_USERNAME; echo
         read -sp "Enter the desired password for the Supabase dashboard admin: " DASHBOARD_PASSWORD; echo
         read -p "Enter the desired Docker network name (e.g., bitcreative): " NETWORK_NAME
+        read -p "Enter GitHub Personal Access Token (for supabase-functions repo): " GITHUB_TOKEN
 
         log "--> Prompting for API keys (leave blank to skip)..."
         read -p "Enter OpenAI API key (or press Enter to skip): " OPENAI_API_KEY
@@ -229,7 +230,7 @@ setup_files() {
     if [ -d "/home/supabase/docker/volumes/functions" ]; then
         log "--> Functions directory already exists. Skipping clone."
     else
-        git clone "$SUPABASE_FUNCTIONS_REPO" /home/supabase/docker/volumes/functions
+        git clone "https://adam3456223:${GITHUB_TOKEN}@github.com/adam3456223/supabase-functions.git" /home/supabase/docker/volumes/functions
     fi
 
     log "--> Cloning vibe-apps repository..."
