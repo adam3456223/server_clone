@@ -201,7 +201,7 @@ setup_docker_env() {
 }
 setup_files() {
     log "### Phase 5: Setting up Configuration Files ###"
-    local temp_dir="/root/server_setup"
+    local temp_dir="/root/server_clone"
     
     log "--> Creating destination directories..."
     mkdir -p /home/n8n /home/node-exporter /home/cadvisor /home/vibe-apps /home/prometheus/config /home/grafana/plugins
