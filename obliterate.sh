@@ -27,10 +27,6 @@ docker rmi $(docker images -q) 2>/dev/null || true
 echo "Removing application directories..."
 rm -rf /home/n8n /home/supabase /home/node-exporter /home/cadvisor /home/vibe-apps /home/prometheus /home/grafana
 
-# Remove config files
-echo "Removing config files..."
-rm -f /root/server_setup/client_vars.env /root/server_setup/setup_*.log
-
 # Remove Docker daemon config
 echo "Removing Docker daemon config..."
 rm -f /etc/docker/daemon.json
