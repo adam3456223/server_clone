@@ -248,6 +248,7 @@ ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
 EOL
     
     log "--> Updating Supabase docker-compose.yml network..."
+    cp "$temp_dir"/supabase_docker-compose.yml /home/supabase/docker/docker-compose.yml
     sed -i "/^networks:/,/^[^ ]/ s/default:/${NETWORK_NAME}:/" /home/supabase/docker/docker-compose.yml
     sed -i "/^networks:/,$ s/name: .*/name: ${NETWORK_NAME}/" /home/supabase/docker/docker-compose.yml
     
@@ -263,20 +264,20 @@ EOL
     rm -rf /tmp/supabase
     
     log "--> Cloning vibe-apps repository..."
-    if [ -d "/home/vibe-apps/vibe" ]; then
+    if [ -d "/home/vibe-apps" ]; then
         log "--> Vibe-apps directory already exists. Skipping clone."
     else
-        git clone "https://adam3456223:${GITHUB_TOKEN}@github.com/adam3456223/vibe.git" /home/vibe-apps/vibe
+        git clone "https://adam3456223:${GITHUB_TOKEN}@github.com/adam3456223/vibe.git" /home/vibe-apps
     fi
     
     log "--> Overwriting vibe-apps files with templates..."
-    cp "$temp_dir"/vibe-apps_docker-compose.yml /home/vibe-apps/vibe/docker-compose.yml
-    cp "$temp_dir"/vibe-apps_vite.config.js /home/vibe-apps/vibe/vite.config.js
+    cp "$temp_dir"/vibe-apps_docker-compose.yml /home/vibe-apps/docker-compose.yml
+    cp "$temp_dir"/vibe-apps_vite.config.js /home/vibe-apps/vite.config.js
     
     log "--> Configuring vibe-apps template files..."
-    sed -i "s|{{VIBE_DOMAIN}}|${VIBE_DOMAIN}|g" /home/vibe-apps/vibe/vite.config.js
-    sed -i "s|{{VIBE_DOMAIN}}|${VIBE_DOMAIN}|g" /home/vibe-apps/vibe/docker-compose.yml
-    sed -i "s|{{NETWORK}}|${NETWORK_NAME}|g" /home/vibe-apps/vibe/docker-compose.yml
+    sed -i "s|{{VIBE_DOMAIN}}|${VIBE_DOMAIN}|g" /home/vibe-apps/vite.config.js
+    sed -i "s|{{VIBE_DOMAIN}}|${VIBE_DOMAIN}|g" /home/vibe-apps/docker-compose.yml
+    sed -i "s|{{NETWORK}}|${NETWORK_NAME}|g" /home/vibe-apps/docker-compose.yml
     log "--> Creating vibe-apps .env file..."
     cat > /home/vibe-apps/.env << EOL
 PUBLIC_SUPABASE_URL=https://${SUPABASE_DOMAIN}
@@ -359,7 +360,7 @@ deploy_services() {
     log "--> Starting Grafana..."
     cd /home/grafana && docker compose up -d
     log "--> Starting vibe-apps..."
-    cd /home/vibe-apps/vibe && docker compose up -d
+    cd /home/vibe-apps && docker compose up -d
     log "--> Configuring firewall..."
     ufw allow 22/tcp
     ufw allow 80/tcp
@@ -380,7 +381,7 @@ deploy_services() {
     cd /home/cadvisor && docker compose up -d
     cd /home/prometheus && docker compose up -d
     cd /home/grafana && docker compose up -d
-    cd /home/vibe-apps/vibe && docker compose up -d
+    cd /home/vibe-apps && docker compose up -d
     log "--> Service deployment complete."
 }
 # --- Main Execution Logic ---
