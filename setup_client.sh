@@ -217,6 +217,7 @@ setup_files() {
     cp "$temp_dir"/node-exporter_docker-compose.yml /home/node-exporter/docker-compose.yml
     cp "$temp_dir"/cadvisor_docker-compose.yml /home/cadvisor/docker-compose.yml
     cp "$temp_dir"/vibe-apps_docker-compose.yml /home/vibe-apps/docker-compose.yml
+    cp "$temp_dir"/vibe-apps_Dockerfile /home/vibe-apps/Dockerfile
     
     log "--> Creating Supabase database init script directories..."
     mkdir -p /home/supabase/docker/volumes/db/{_supabase.sql,jwt.sql,logs.sql,pooler.sql,realtime.sql,roles.sql,webhooks.sql}
