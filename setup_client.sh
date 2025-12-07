@@ -240,6 +240,10 @@ setup_files() {
         git clone "$VIBE_APPS_REPO" /home/vibe-apps/vibe
     fi
 
+    log "--> Copying and configuring vite.config.js for vibe-apps..."
+    cp "$temp_dir"/vibe-apps_vite.config.js /home/vibe-apps/vibe/vite.config.js
+    sed -i "s|{{VIBE_DOMAIN}}|${VIBE_DOMAIN}|g" /home/vibe-apps/vibe/vite.config.js
+
     log "--> Creating vibe-apps .env file..."
     cat > /home/vibe-apps/.env << EOL
 PUBLIC_SUPABASE_URL=https://${SUPABASE_DOMAIN}
