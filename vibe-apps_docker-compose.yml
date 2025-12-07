@@ -1,0 +1,30 @@
+version: "3.8"
+
+services:
+  vibe-apps:
+    container_name: vibe-apps
+    restart: unless-stopped
+    build: # Tell Compose to build an image using the Dockerfile in the current directory
+      context: .
+    working_dir: /app # Set the working directory
+    volumes:
+      # Mount current directory into /app for hot-reloading
+      # Exclude node_modules to use the ones installed in the image
+      - ./:/app
+      - /app/node_modules # Anonymous volume trick
+      - ./logs:/app/logs # Add this line to persist logs
+    environment:
+      # Ensure Vite listens on all network interfaces within the container
+      - VITE_HOST=0.0.0.0
+      # Explicitly tell Vite which port to use inside the container
+      - VITE_PORT=5173
+      - ORIGIN=https://vibe.bitcreative.com.au
+      - PUBLIC_SUPABASE_URL=${PUBLIC_SUPABASE_URL}
+      - PUBLIC_SUPABASE_ANON_KEY=${PUBLIC_SUPABASE_ANON_KEY}
+    networks:
+      - {{NETWORK}}
+
+networks:
+  {{NETWORK}}:
+    name: {{NETWORK}}
+    external: true
