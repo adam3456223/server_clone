@@ -9,7 +9,6 @@
 #
 # --- Configuration ---
 set -e # Exit immediately if a command exits with a non-zero status.
-readonly TEMPLATE_REPO="https://bit_creative@bitbucket.org/bit_creative/docker.git"
 readonly VIBE_APPS_REPO="https://github.com/adam3456223/vibe.git"
 readonly CLIENT_CONFIG_FILE="client_vars.env"
 readonly LOG_FILE="setup_$(date +%Y-%m-%d_%H-%M-%S).log"
@@ -32,7 +31,7 @@ generate_jwt() {
 preflight_checks() {
     log "### Phase 1: Running Pre-flight Checks ###"
     if [ "$EUID" -ne 0 ]; then log "ERROR: This script must be run as root."; exit 1; fi
-    for cmd in docker git ufw openssl; do
+    for cmd in docker git ufw openssl curl; do
         if ! command -v "$cmd" &> /dev/null; then log "ERROR: Required command '$cmd' is not installed."; exit 1; fi
     done
     if ! docker compose version &> /dev/null; then log "ERROR: Docker Compose V2 plugin is not installed."; exit 1; fi
@@ -48,8 +47,7 @@ get_user_config() {
             "N8N_DOMAIN_NAME" "NETWORK_NAME" "SUPABASE_DOMAIN" "SSL_EMAIL" "SERVER_PUBLIC_IP" "LOGGING_SERVER_IP"
             "GENERIC_TIMEZONE" "N8N_DB_PASSWORD" "SUBDOMAIN" "SUPABASE_POSTGRES_PASSWORD" "JWT_SECRET" "ANON_KEY" "SERVICE_ROLE_KEY"
             "DASHBOARD_USERNAME" "DASHBOARD_PASSWORD" "SECRET_KEY_BASE" "VAULT_ENC_KEY" "VIBE_DOMAIN" "FUNCTIONS_DOMAIN"
-            "OPENAI_API_KEY" "GEMINI_API_KEY" "ANTHROPIC_API_KEY" "N8N_PRE_PROCESS_WEBHOOK_URL" "N8N_POST_PROCESS_WEBHOOK_URL"
-            "GITHUB_TOKEN"
+            "OPENAI_API_KEY" "GEMINI_API_KEY" "ANTHROPIC_API_KEY" "GITHUB_TOKEN"
         )
         config_is_valid=true
         for var_name in "${required_vars[@]}"; do
@@ -87,7 +85,7 @@ get_user_config() {
         read -p "Enter the desired username for the Supabase dashboard admin: " DASHBOARD_USERNAME; echo
         read -sp "Enter the desired password for the Supabase dashboard admin: " DASHBOARD_PASSWORD; echo
         read -p "Enter the desired Docker network name (e.g., bitcreative): " NETWORK_NAME
-        read -p "Enter GitHub Personal Access Token (for supabase-functions repo): " GITHUB_TOKEN
+        read -p "Enter GitHub Personal Access Token (for private repos): " GITHUB_TOKEN
         
         log "--> Prompting for API keys (leave blank to skip)..."
         read -p "Enter OpenAI API key (or press Enter to skip): " OPENAI_API_KEY
@@ -128,8 +126,6 @@ VAULT_ENC_KEY=${VAULT_ENC_KEY}
 OPENAI_API_KEY=${OPENAI_API_KEY}
 GEMINI_API_KEY=${GEMINI_API_KEY}
 ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-N8N_PRE_PROCESS_WEBHOOK_URL=${N8N_PRE_PROCESS_WEBHOOK_URL}
-N8N_POST_PROCESS_WEBHOOK_URL=${N8N_POST_PROCESS_WEBHOOK_URL}
 GITHUB_TOKEN=${GITHUB_TOKEN}
 EOL
     fi
@@ -199,7 +195,7 @@ setup_files() {
     local temp_dir="/tmp/docker-templates"
     log "--> Cloning template repository to $temp_dir..."
     rm -rf "$temp_dir"
-    git clone "$TEMPLATE_REPO" "$temp_dir"
+    git clone "https://adam3456223:${GITHUB_TOKEN}@github.com/adam3456223/docker.git" "$temp_dir"
     
     log "--> Creating destination directories..."
     mkdir -p /home/n8n /home/node-exporter /home/cadvisor /home/vibe-apps
@@ -233,17 +229,13 @@ setup_files() {
     sed -i "s|SITE_URL=.*|SITE_URL=https://${SUPABASE_DOMAIN}|" /home/supabase/docker/.env
     sed -i "s|SUPABASE_PUBLIC_URL=.*|SUPABASE_PUBLIC_URL=https://${SUPABASE_DOMAIN}|" /home/supabase/docker/.env
     
-    log "--> Adding API keys and webhook URLs to Supabase .env..."
+    log "--> Adding API keys to Supabase .env..."
     cat >> /home/supabase/docker/.env << EOL
 
 # API Keys
 OPENAI_API_KEY=${OPENAI_API_KEY}
 GEMINI_API_KEY=${GEMINI_API_KEY}
 ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-
-# n8n Webhook URLs
-N8N_PRE_PROCESS_WEBHOOK_URL=${N8N_PRE_PROCESS_WEBHOOK_URL}
-N8N_POST_PROCESS_WEBHOOK_URL=${N8N_POST_PROCESS_WEBHOOK_URL}
 EOL
     
     log "--> Updating Supabase docker-compose.yml network..."
