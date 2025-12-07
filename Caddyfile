@@ -1,4 +1,4 @@
-{{SUBDOMAIN}}.{{N8N_DOMAIN_NAME}} {
+{{SUBDOMAIN}}.{{N8N_DOMAIN}} {
     # Metrics endpoint - restricted to your monitoring server IP
     @metrics {
         path /metrics
