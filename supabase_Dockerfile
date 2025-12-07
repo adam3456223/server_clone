@@ -1,0 +1,19 @@
+FROM supabase/edge-runtime:v1.69.28
+
+# Install Node.js and npm
+USER root
+RUN apt-get update && \
+    apt-get install -y curl && \
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install TypeScript and svelte-check globally
+RUN npm install -g typescript svelte-check
+
+# Switch back to deno user if the base image uses one
+#USER deno
+
+# Keep the original entrypoint
+#ENTRYPOINT ["/usr/local/bin/deno"]
