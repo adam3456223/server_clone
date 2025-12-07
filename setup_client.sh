@@ -43,10 +43,10 @@ get_user_config() {
         log "--> Found existing config file '$CLIENT_CONFIG_FILE'. Validating..."
         source "$CLIENT_CONFIG_FILE"
         required_vars=(
-            "CLIENT_DOMAIN" "NETWORK_NAME" "SUPABASE_DOMAIN" "SSL_EMAIL" "SERVER_PUBLIC_IP" "LOGGING_SERVER_IP"
-            "GENERIC_TIMEZONE" "N8N_DB_PASSWORD" "SUBDOMAIN" "SUPABASE_POSTGRES_PASSWORD" "JWT_SECRET" "ANON_KEY" "SERVICE_ROLE_KEY"
-            "DASHBOARD_USERNAME" "DASHBOARD_PASSWORD" "SECRET_KEY_BASE" "VAULT_ENC_KEY" "VIBE_DOMAIN" "FUNCTIONS_DOMAIN"
-            "PROMETHEUS_DOMAIN" "GRAFANA_DOMAIN" "GRAFANA_ADMIN_PASSWORD" "GITHUB_TOKEN"
+            "CLIENT_DOMAIN" "NETWORK_NAME" "SUPABASE_SUBDOMAIN" "SSL_EMAIL" "SERVER_PUBLIC_IP" "LOGGING_SERVER_IP"
+            "GENERIC_TIMEZONE" "N8N_DB_PASSWORD" "N8N_SUBDOMAIN" "VIBE_SUBDOMAIN" "FUNCTIONS_SUBDOMAIN" 
+            "PROMETHEUS_SUBDOMAIN" "GRAFANA_SUBDOMAIN" "SUPABASE_POSTGRES_PASSWORD" "JWT_SECRET" "ANON_KEY" "SERVICE_ROLE_KEY"
+            "DASHBOARD_USERNAME" "DASHBOARD_PASSWORD" "SECRET_KEY_BASE" "VAULT_ENC_KEY" "GRAFANA_ADMIN_PASSWORD" "GITHUB_TOKEN"
         )
         config_is_valid=true
         for var_name in "${required_vars[@]}"; do
@@ -68,7 +68,7 @@ get_user_config() {
         LOGGING_SERVER_IP="68.183.29.60"
         
         read -p "Enter the client's main domain (e.g., client.com): " CLIENT_DOMAIN
-        read -p "Enter the subdomain for n8n (e.g., n8n): " SUBDOMAIN
+        read -p "Enter the subdomain for n8n (e.g., n8n): " N8N_SUBDOMAIN
         read -p "Enter the subdomain for Supabase (e.g., supabase): " SUPABASE_SUBDOMAIN
         read -p "Enter the subdomain for vibe-apps (e.g., vibe): " VIBE_SUBDOMAIN
         read -p "Enter the subdomain for functions (e.g., functions): " FUNCTIONS_SUBDOMAIN
@@ -78,6 +78,7 @@ get_user_config() {
         # Build full domains
         SUPABASE_DOMAIN="${SUPABASE_SUBDOMAIN}.${CLIENT_DOMAIN}"
         VIBE_DOMAIN="${VIBE_SUBDOMAIN}.${CLIENT_DOMAIN}"
+        N8N_DOMAIN="${N8N_SUBDOMAIN}.${CLIENT_DOMAIN}"
         FUNCTIONS_DOMAIN="${FUNCTIONS_SUBDOMAIN}.${CLIENT_DOMAIN}"
         PROMETHEUS_DOMAIN="${PROMETHEUS_SUBDOMAIN}.${CLIENT_DOMAIN}"
         GRAFANA_DOMAIN="${GRAFANA_SUBDOMAIN}.${CLIENT_DOMAIN}"
@@ -89,12 +90,13 @@ get_user_config() {
         read -sp "Enter the desired password for the Supabase dashboard admin: " DASHBOARD_PASSWORD; echo
         read -sp "Enter the desired password for Grafana admin: " GRAFANA_ADMIN_PASSWORD; echo
         read -p "Enter the desired Docker network name (e.g., bitcreative): " NETWORK_NAME
-        read -p "Enter GitHub Personal Access Token (for private repos): " GITHUB_TOKEN
         
         log "--> Prompting for API keys (leave blank to skip)..."
         read -p "Enter OpenAI API key (or press Enter to skip): " OPENAI_API_KEY
         read -p "Enter Gemini API key (or press Enter to skip): " GEMINI_API_KEY
         read -p "Enter Anthropic API key (or press Enter to skip): " ANTHROPIC_API_KEY
+
+        read -p "Enter GitHub Personal Access Token (for private repos): " GITHUB_TOKEN
         
         log "--> Auto-generating required secrets..."
         SUPABASE_POSTGRES_PASSWORD=$(openssl rand -hex 32)
@@ -110,13 +112,13 @@ get_user_config() {
         cat > "$CLIENT_CONFIG_FILE" << EOL
 # Client Server Configuration
 CLIENT_DOMAIN="${CLIENT_DOMAIN}"
-SUBDOMAIN="${SUBDOMAIN}"
+SUPABASE_SUBDOMAIN="${SUPABASE_SUBDOMAIN}"
+N8N_SUBDOMAIN="${N8N_SUBDOMAIN}"
+VIBE_SUBDOMAIN="${VIBE_SUBDOMAIN}"
+FUNCTIONS_SUBDOMAIN="${FUNCTIONS_SUBDOMAIN}"
+PROMETHEUS_SUBDOMAIN="${PROMETHEUS_SUBDOMAIN}"
+GRAFANA_SUBDOMAIN="${GRAFANA_SUBDOMAIN}"
 NETWORK_NAME="${NETWORK_NAME}"
-SUPABASE_DOMAIN="${SUPABASE_DOMAIN}"
-VIBE_DOMAIN="${VIBE_DOMAIN}"
-FUNCTIONS_DOMAIN="${FUNCTIONS_DOMAIN}"
-PROMETHEUS_DOMAIN="${PROMETHEUS_DOMAIN}"
-GRAFANA_DOMAIN="${GRAFANA_DOMAIN}"
 SSL_EMAIL="${SSL_EMAIL}"
 SERVER_PUBLIC_IP="${SERVER_PUBLIC_IP}"
 LOGGING_SERVER_IP="${LOGGING_SERVER_IP}"
@@ -289,13 +291,13 @@ EOL
     log "--> Configuring copied files with client variables..."
     # Process n8n files
     sed -i "s|{{CLIENT_DOMAIN}}|${CLIENT_DOMAIN}|g" /home/n8n/.env
-    sed -i "s|{{SUBDOMAIN}}|${SUBDOMAIN}|g" /home/n8n/.env
+    sed -i "s|{{N8N_DOMAIN}}|${N8N_DOMAIN}|g" /home/n8n/.env
     sed -i "s|{{SSL_EMAIL}}|${SSL_EMAIL}|g" /home/n8n/.env
     sed -i "s|{{YOUR_DROPLET_IP}}|${SERVER_PUBLIC_IP}|g" /home/n8n/.env
     sed -i "s|{{N8N_DB_PASSWORD}}|${N8N_DB_PASSWORD}|g" /home/n8n/.env
     sed -i "s|{{GENERIC_TIMEZONE}}|${GENERIC_TIMEZONE}|g" /home/n8n/.env
     sed -i "s|{{NETWORK}}|${NETWORK_NAME}|g" /home/n8n/docker-compose.yml
-    sed -i "s|{{SUBDOMAIN}}|${SUBDOMAIN}|g" /home/n8n/Caddyfile
+    sed -i "s|{{N8N_DOMAIN}}|${N8N_DOMAIN}|g" /home/n8n/Caddyfile
     sed -i "s|{{CLIENT_DOMAIN}}|${CLIENT_DOMAIN}|g" /home/n8n/Caddyfile
     sed -i "s|{{SUPABASE_DOMAIN}}|${SUPABASE_DOMAIN}|g" /home/n8n/Caddyfile
     sed -i "s|{{VIBE_DOMAIN}}|${VIBE_DOMAIN}|g" /home/n8n/Caddyfile
@@ -311,7 +313,7 @@ EOL
     sed -i "s|{{NETWORK}}|${NETWORK_NAME}|g" /home/grafana/docker-compose.yml
     
     # Process Prometheus config
-    sed -i "s|{{SUBDOMAIN}}|${SUBDOMAIN}|g" /home/prometheus/config/prometheus.yml
+    sed -i "s|{{PROMETHEUS_DOMAIN}}|${PROMETHEUS_DOMAIN}|g" /home/prometheus/config/prometheus.yml
     sed -i "s|{{CLIENT_DOMAIN}}|${CLIENT_DOMAIN}|g" /home/prometheus/config/prometheus.yml
     
     # Process Grafana config
@@ -410,8 +412,8 @@ main() {
     log "--------------------------------------------------"
     log ""
     log "Your services should be available shortly at:"
-    log "n8n:                https://${SUBDOMAIN}.${CLIENT_DOMAIN}"
-    log "n8n metrics:        https://${SUBDOMAIN}.${CLIENT_DOMAIN}/metrics (restricted to ${LOGGING_SERVER_IP})"
+    log "n8n:                https://${N8N_DOMAIN}"
+    log "n8n metrics:        https://${N8N_DOMAIN}/metrics (restricted to ${LOGGING_SERVER_IP})"
     log "Supabase:           https://${SUPABASE_DOMAIN}"
     log "Vibe Apps:          https://${VIBE_DOMAIN}"
     log "Edge Functions:     https://${FUNCTIONS_DOMAIN}"
