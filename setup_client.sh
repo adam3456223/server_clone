@@ -201,21 +201,21 @@ setup_docker_env() {
 }
 setup_files() {
     log "### Phase 5: Setting up Configuration Files ###"
-    local temp_dir="/root/server_clone"
+    local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     
     log "--> Creating destination directories..."
     mkdir -p /home/n8n /home/node-exporter /home/cadvisor /home/vibe-apps /home/prometheus/config /home/grafana/plugins
     
     log "--> Copying and renaming template files..."
-    cp ./n8n_.env /home/n8n/.env
-    cp ./n8n_Dockerfile /home/n8n/Dockerfile
-    cp ./n8n_docker-compose.yml /home/n8n/docker-compose.yml
-    cp ./Caddyfile /home/n8n/Caddyfile
-    cp ./node-exporter_docker-compose.yml /home/node-exporter/docker-compose.yml
-    cp ./cadvisor_docker-compose.yml /home/cadvisor/docker-compose.yml
-    cp ./prometheus_docker-compose.yml /home/prometheus/docker-compose.yml
-    cp ./prometheus.yml /home/prometheus/config/prometheus.yml
-    cp ./grafana_docker-compose.yml /home/grafana/docker-compose.yml
+    cp ${script_dir}/n8n_.env /home/n8n/.env
+    cp ${script_dir}/n8n_Dockerfile /home/n8n/Dockerfile
+    cp ${script_dir}/n8n_docker-compose.yml /home/n8n/docker-compose.yml
+    cp ${script_dir}/Caddyfile /home/n8n/Caddyfile
+    cp ${script_dir}/node-exporter_docker-compose.yml /home/node-exporter/docker-compose.yml
+    cp ${script_dir}/cadvisor_docker-compose.yml /home/cadvisor/docker-compose.yml
+    cp ${script_dir}/prometheus_docker-compose.yml /home/prometheus/docker-compose.yml
+    cp ${script_dir}/prometheus.yml /home/prometheus/config/prometheus.yml
+    cp ${script_dir}/grafana_docker-compose.yml /home/grafana/docker-compose.yml
     
     log "--> Setting up Supabase from official repository..."
     cd /tmp
@@ -248,7 +248,7 @@ ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
 EOL
     
     log "--> Updating Supabase docker-compose.yml network..."
-    cp ./supabase_docker-compose.yml /home/supabase/docker/docker-compose.yml
+    cp ${script_dir}/supabase_docker-compose.yml /home/supabase/docker/docker-compose.yml
     sed -i "/^networks:/,/^[^ ]/ s/default:/${NETWORK_NAME}:/" /home/supabase/docker/docker-compose.yml
     sed -i "/^networks:/,$ s/name: .*/name: ${NETWORK_NAME}/" /home/supabase/docker/docker-compose.yml
     
@@ -271,8 +271,8 @@ EOL
     fi
     
     log "--> Overwriting vibe-apps files with templates..."
-    cp ./vibe-apps_docker-compose.yml /home/vibe-apps/docker-compose.yml
-    cp ./vibe-apps_vite.config.js /home/vibe-apps/vite.config.js
+    cp ${script_dir}/vibe-apps_docker-compose.yml /home/vibe-apps/docker-compose.yml
+    cp ${script_dir}/vibe-apps_vite.config.js /home/vibe-apps/vite.config.js
     
     log "--> Configuring vibe-apps template files..."
     sed -i "s|{{VIBE_DOMAIN}}|${VIBE_DOMAIN}|g" /home/vibe-apps/vite.config.js
