@@ -217,7 +217,6 @@ setup_files() {
     cp "$temp_dir"/node-exporter_docker-compose.yml /home/node-exporter/docker-compose.yml
     cp "$temp_dir"/cadvisor_docker-compose.yml /home/cadvisor/docker-compose.yml
     cp "$temp_dir"/vibe-apps_docker-compose.yml /home/vibe-apps/docker-compose.yml
-    cp "$temp_dir"/vibe-apps_Dockerfile /home/vibe-apps/Dockerfile
     
     log "--> Creating Supabase database init script directories..."
     mkdir -p /home/supabase/docker/volumes/db/{_supabase.sql,jwt.sql,logs.sql,pooler.sql,realtime.sql,roles.sql,webhooks.sql}
@@ -240,10 +239,15 @@ setup_files() {
     else
         git clone "$VIBE_APPS_REPO" /home/vibe-apps/vibe
     fi
-
-    log "--> Copying and configuring vite.config.js for vibe-apps..."
+    
+    log "--> Overwriting vibe-apps files with templates..."
+    cp "$temp_dir"/vibe-apps_docker-compose.yml /home/vibe-apps/vibe/docker-compose.yml
     cp "$temp_dir"/vibe-apps_vite.config.js /home/vibe-apps/vibe/vite.config.js
+    
+    log "--> Configuring vibe-apps template files..."
     sed -i "s|{{VIBE_DOMAIN}}|${VIBE_DOMAIN}|g" /home/vibe-apps/vibe/vite.config.js
+    sed -i "s|{{VIBE_DOMAIN}}|${VIBE_DOMAIN}|g" /home/vibe-apps/vibe/docker-compose.yml
+    sed -i "s|{{NETWORK}}|${NETWORK_NAME}|g" /home/vibe-apps/vibe/docker-compose.yml
 
     log "--> Creating vibe-apps .env file..."
     cat > /home/vibe-apps/.env << EOL
