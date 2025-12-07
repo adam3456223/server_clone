@@ -202,10 +202,7 @@ setup_docker_env() {
 }
 setup_files() {
     log "### Phase 5: Setting up Configuration Files ###"
-    local temp_dir="/tmp/docker-templates"
-    log "--> Cloning template repository to $temp_dir..."
-    rm -rf "$temp_dir"
-    git clone "https://adam3456223:${GITHUB_TOKEN}@github.com/adam3456223/docker.git" "$temp_dir"
+    local temp_dir="/root/server_setup"
     
     log "--> Creating destination directories..."
     mkdir -p /home/n8n /home/node-exporter /home/cadvisor /home/vibe-apps /home/prometheus/config /home/grafana/plugins
