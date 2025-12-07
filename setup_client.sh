@@ -246,10 +246,12 @@ OPENAI_API_KEY=${OPENAI_API_KEY}
 GEMINI_API_KEY=${GEMINI_API_KEY}
 ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
 EOL
-    
+
     log "--> Updating Supabase docker-compose.yml network..."
     cp ${script_dir}/supabase_docker-compose.yml /home/supabase/docker/docker-compose.yml
-    sed -i "s|{{NETWORK}}|${NETWORK_NAME}|g" /home/supabase/docker/docker-compose.yml    
+    sed -i "s|{{NETWORK}}|${NETWORK_NAME}|g" /home/supabase/docker/docker-compose.yml
+    cp ${script_dir}/supabase_Dockerfile /home/supabase/docker/Dockerfile
+
     log "--> Cloning Supabase edge functions repository..."
     mkdir -p /home/supabase/docker/volumes
     if [ -d "/home/supabase/docker/volumes/functions" ]; then
