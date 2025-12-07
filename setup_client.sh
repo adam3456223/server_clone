@@ -1,5 +1,4 @@
 #!/bin/bash
-
 #
 # Bit Creative - Client Server Setup Script
 # Version: 2.0
@@ -8,20 +7,16 @@
 #              n8n, Supabase, Caddy, monitoring (node-exporter, cAdvisor),
 #              and vibe-apps, using a standardized template repository.
 #
-
 # --- Configuration ---
 set -e # Exit immediately if a command exits with a non-zero status.
 readonly TEMPLATE_REPO="https://bit_creative@bitbucket.org/bit_creative/docker.git"
-readonly SUPABASE_FUNCTIONS_REPO="https://github.com/adam3456223/supabase-functions.git"
 readonly VIBE_APPS_REPO="https://github.com/adam3456223/vibe.git"
 readonly CLIENT_CONFIG_FILE="client_vars.env"
 readonly LOG_FILE="setup_$(date +%Y-%m-%d_%H-%M-%S).log"
-
 # --- Logging Function ---
 log() {
     echo "$@" | tee -a "$LOG_FILE"
 }
-
 # --- JWT Generation Function ---
 generate_jwt() {
     local payload="$1"
@@ -33,9 +28,7 @@ generate_jwt() {
     local signature=$(echo -n "$unsigned_token" | openssl dgst -sha256 -hmac "$secret" -binary | base64 | tr -d '=' | tr '/+' '_-')
     echo "${unsigned_token}.${signature}"
 }
-
 # --- Script Phases ---
-
 preflight_checks() {
     log "### Phase 1: Running Pre-flight Checks ###"
     if [ "$EUID" -ne 0 ]; then log "ERROR: This script must be run as root."; exit 1; fi
@@ -45,7 +38,6 @@ preflight_checks() {
     if ! docker compose version &> /dev/null; then log "ERROR: Docker Compose V2 plugin is not installed."; exit 1; fi
     log "--> Pre-flight checks passed."
 }
-
 get_user_config() {
     log "### Phase 2: Gathering Configuration ###"
     local config_is_valid=false
@@ -57,6 +49,7 @@ get_user_config() {
             "GENERIC_TIMEZONE" "N8N_DB_PASSWORD" "SUBDOMAIN" "SUPABASE_POSTGRES_PASSWORD" "JWT_SECRET" "ANON_KEY" "SERVICE_ROLE_KEY"
             "DASHBOARD_USERNAME" "DASHBOARD_PASSWORD" "SECRET_KEY_BASE" "VAULT_ENC_KEY" "VIBE_DOMAIN" "FUNCTIONS_DOMAIN"
             "OPENAI_API_KEY" "GEMINI_API_KEY" "ANTHROPIC_API_KEY" "N8N_PRE_PROCESS_WEBHOOK_URL" "N8N_POST_PROCESS_WEBHOOK_URL"
+            "GITHUB_TOKEN"
         )
         config_is_valid=true
         for var_name in "${required_vars[@]}"; do
@@ -67,7 +60,6 @@ get_user_config() {
             fi
         done
     fi
-
     if [ "$config_is_valid" = false ]; then
         log "--> No valid config file found. Prompting for new values..."
         read -p "Enter this server's public IP address: " SERVER_PUBLIC_IP
@@ -78,13 +70,12 @@ get_user_config() {
         read -sp "Enter the password for the n8n database user: " N8N_DB_PASSWORD; echo
         read -p "Enter the Supabase full domain (including subdomain) but without https:// (e.g., supabase.client.com): " SUPABASE_DOMAIN
         read -p "Enter the vibe-apps full domain but without https:// (e.g., vibe.client.com): " VIBE_DOMAIN
-        read -p "Enter the Supabase functions full domain but without https:// (e.g., functions.client.com): " FUNCTIONS_DOMAIN
+        read -p "Enter the functions full domain but without https:// (e.g., functions.client.com): " FUNCTIONS_DOMAIN
         read -p "Enter the SSL contact email: " SSL_EMAIL
         read -p "Enter the desired username for the Supabase dashboard admin: " DASHBOARD_USERNAME; echo
         read -sp "Enter the desired password for the Supabase dashboard admin: " DASHBOARD_PASSWORD; echo
         read -p "Enter the desired Docker network name (e.g., bitcreative): " NETWORK_NAME
         read -p "Enter GitHub Personal Access Token (for supabase-functions repo): " GITHUB_TOKEN
-
         log "--> Prompting for API keys (leave blank to skip)..."
         read -p "Enter OpenAI API key (or press Enter to skip): " OPENAI_API_KEY
         read -p "Enter Gemini API key (or press Enter to skip): " GEMINI_API_KEY
@@ -93,7 +84,6 @@ get_user_config() {
         log "--> Prompting for n8n webhook URLs (leave blank to configure later)..."
         read -p "Enter n8n pre-process webhook URL (or press Enter to skip): " N8N_PRE_PROCESS_WEBHOOK_URL
         read -p "Enter n8n post-process webhook URL (or press Enter to skip): " N8N_POST_PROCESS_WEBHOOK_URL
-
         log "--> Auto-generating required secrets..."
         SUPABASE_POSTGRES_PASSWORD=$(openssl rand -hex 32)
         JWT_SECRET=$(openssl rand -hex 32)
@@ -103,7 +93,6 @@ get_user_config() {
         log "--> Generating Supabase JWT keys..."
         ANON_KEY=$(generate_jwt '{"role":"anon"}' "$JWT_SECRET")
         SERVICE_ROLE_KEY=$(generate_jwt '{"role":"service_role"}' "$JWT_SECRET")
-
         log "--> Saving configuration to '$CLIENT_CONFIG_FILE' for future use."
         cat > "$CLIENT_CONFIG_FILE" << EOL
 # Client Server Configuration
@@ -131,11 +120,11 @@ GEMINI_API_KEY=${GEMINI_API_KEY}
 ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
 N8N_PRE_PROCESS_WEBHOOK_URL=${N8N_PRE_PROCESS_WEBHOOK_URL}
 N8N_POST_PROCESS_WEBHOOK_URL=${N8N_POST_PROCESS_WEBHOOK_URL}
+GITHUB_TOKEN=${GITHUB_TOKEN}
 EOL
     fi
     log "--> Configuration loaded."
 }
-
 system_prep() {
     log "### Phase 3: Preparing System & Server ###"
     log "--> Applying kernel performance tuning..."
@@ -177,7 +166,6 @@ EOL
     
     log "--> System preparation complete."
 }
-
 setup_docker_env() {
     log "### Phase 4: Setting up Docker Environment ###"
     if ! docker network ls | grep -q "$NETWORK_NAME"; then
@@ -196,7 +184,6 @@ setup_docker_env() {
     done
     log "--> Docker environment setup complete."
 }
-
 setup_files() {
     log "### Phase 5: Setting up Configuration Files ###"
     local temp_dir="/tmp/docker-templates"
@@ -205,26 +192,54 @@ setup_files() {
     git clone "$TEMPLATE_REPO" "$temp_dir"
     
     log "--> Creating destination directories..."
-    mkdir -p /home/n8n /home/supabase/docker /home/node-exporter /home/cadvisor /home/vibe-apps
+    mkdir -p /home/n8n /home/node-exporter /home/cadvisor /home/vibe-apps
     
     log "--> Copying and renaming template files..."
     cp "$temp_dir"/n8n_.env /home/n8n/.env
     cp "$temp_dir"/n8n_Dockerfile /home/n8n/Dockerfile
-    cp "$temp_dir"/supabase_Dockerfile /home/supabase/docker/Dockerfile
     cp "$temp_dir"/n8n_docker-compose.yml /home/n8n/docker-compose.yml
     cp "$temp_dir"/Caddyfile /home/n8n/Caddyfile
-    cp "$temp_dir"/supabase_.env /home/supabase/docker/.env
-    cp "$temp_dir"/supabase_docker-compose.yml /home/supabase/docker/docker-compose.yml
     cp "$temp_dir"/node-exporter_docker-compose.yml /home/node-exporter/docker-compose.yml
     cp "$temp_dir"/cadvisor_docker-compose.yml /home/cadvisor/docker-compose.yml
     
-    log "--> Creating Supabase database init script directories..."
-    mkdir -p /home/supabase/docker/volumes/db/{_supabase.sql,jwt.sql,logs.sql,pooler.sql,realtime.sql,roles.sql,webhooks.sql}
+    log "--> Setting up Supabase from official repository..."
+    cd /tmp
+    rm -rf /tmp/supabase
+    git clone --depth 1 https://github.com/supabase/supabase
     
-    log "--> Creating Supabase Kong config directory and copying file..."
-    mkdir -p /home/supabase/docker/volumes/api
-    cp "$temp_dir"/supabase_kong.yml /home/supabase/docker/volumes/api/kong.yml
+    mkdir -p /home/supabase/docker
+    cp -rf /tmp/supabase/docker/* /home/supabase/docker/
+    cp /tmp/supabase/docker/.env.example /home/supabase/docker/.env
+    
+    log "--> Configuring Supabase .env with client values..."
+    sed -i "s|POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=${SUPABASE_POSTGRES_PASSWORD}|" /home/supabase/docker/.env
+    sed -i "s|JWT_SECRET=.*|JWT_SECRET=${JWT_SECRET}|" /home/supabase/docker/.env
+    sed -i "s|ANON_KEY=.*|ANON_KEY=${ANON_KEY}|" /home/supabase/docker/.env
+    sed -i "s|SERVICE_ROLE_KEY=.*|SERVICE_ROLE_KEY=${SERVICE_ROLE_KEY}|" /home/supabase/docker/.env
+    sed -i "s|DASHBOARD_USERNAME=.*|DASHBOARD_USERNAME=${DASHBOARD_USERNAME}|" /home/supabase/docker/.env
+    sed -i "s|DASHBOARD_PASSWORD=.*|DASHBOARD_PASSWORD=${DASHBOARD_PASSWORD}|" /home/supabase/docker/.env
+    sed -i "s|SECRET_KEY_BASE=.*|SECRET_KEY_BASE=${SECRET_KEY_BASE}|" /home/supabase/docker/.env
+    sed -i "s|VAULT_ENC_KEY=.*|VAULT_ENC_KEY=${VAULT_ENC_KEY}|" /home/supabase/docker/.env
+    sed -i "s|SITE_URL=.*|SITE_URL=https://${SUPABASE_DOMAIN}|" /home/supabase/docker/.env
+    sed -i "s|SUPABASE_PUBLIC_URL=.*|SUPABASE_PUBLIC_URL=https://${SUPABASE_DOMAIN}|" /home/supabase/docker/.env
+    
+    log "--> Adding API keys and webhook URLs to Supabase .env..."
+    cat >> /home/supabase/docker/.env << EOL
 
+# API Keys
+OPENAI_API_KEY=${OPENAI_API_KEY}
+GEMINI_API_KEY=${GEMINI_API_KEY}
+ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+
+# n8n Webhook URLs
+N8N_PRE_PROCESS_WEBHOOK_URL=${N8N_PRE_PROCESS_WEBHOOK_URL}
+N8N_POST_PROCESS_WEBHOOK_URL=${N8N_POST_PROCESS_WEBHOOK_URL}
+EOL
+    
+    log "--> Updating Supabase docker-compose.yml network..."
+    sed -i "s|default:|${NETWORK_NAME}:|g" /home/supabase/docker/docker-compose.yml
+    sed -i "s|name: .*|name: ${NETWORK_NAME}|g" /home/supabase/docker/docker-compose.yml
+    
     log "--> Cloning Supabase edge functions repository..."
     mkdir -p /home/supabase/docker/volumes
     if [ -d "/home/supabase/docker/volumes/functions" ]; then
@@ -232,7 +247,10 @@ setup_files() {
     else
         git clone "https://adam3456223:${GITHUB_TOKEN}@github.com/adam3456223/supabase-functions.git" /home/supabase/docker/volumes/functions
     fi
-
+    
+    log "--> Cleaning up Supabase temp directory..."
+    rm -rf /tmp/supabase
+    
     log "--> Cloning vibe-apps repository..."
     if [ -d "/home/vibe-apps/vibe" ]; then
         log "--> Vibe-apps directory already exists. Skipping clone."
@@ -248,13 +266,11 @@ setup_files() {
     sed -i "s|{{VIBE_DOMAIN}}|${VIBE_DOMAIN}|g" /home/vibe-apps/vibe/vite.config.js
     sed -i "s|{{VIBE_DOMAIN}}|${VIBE_DOMAIN}|g" /home/vibe-apps/vibe/docker-compose.yml
     sed -i "s|{{NETWORK}}|${NETWORK_NAME}|g" /home/vibe-apps/vibe/docker-compose.yml
-
     log "--> Creating vibe-apps .env file..."
     cat > /home/vibe-apps/.env << EOL
 PUBLIC_SUPABASE_URL=https://${SUPABASE_DOMAIN}
 PUBLIC_SUPABASE_ANON_KEY=${ANON_KEY}
 EOL
-
     log "--> Configuring copied files with client variables..."
     # Process n8n files
     sed -i "s|{{N8N_DOMAIN_NAME}}|${N8N_DOMAIN_NAME}|g" /home/n8n/.env
@@ -270,33 +286,13 @@ EOL
     sed -i "s|{{VIBE_DOMAIN}}|${VIBE_DOMAIN}|g" /home/n8n/Caddyfile
     sed -i "s|{{FUNCTIONS_DOMAIN}}|${FUNCTIONS_DOMAIN}|g" /home/n8n/Caddyfile
     sed -i "s|{{LOGGING_SERVER_IP}}|${LOGGING_SERVER_IP}|g" /home/n8n/Caddyfile
-
-    # Process Supabase files
-    sed -i "s|{{SUPABASE_POSTGRES_PASSWORD}}|${SUPABASE_POSTGRES_PASSWORD}|g" /home/supabase/docker/.env
-    sed -i "s|{{JWT_SECRET}}|${JWT_SECRET}|g" /home/supabase/docker/.env
-    sed -i "s|{{ANON_KEY}}|${ANON_KEY}|g" /home/supabase/docker/.env
-    sed -i "s|{{SERVICE_ROLE_KEY}}|${SERVICE_ROLE_KEY}|g" /home/supabase/docker/.env
-    sed -i "s|{{DASHBOARD_USERNAME}}|${DASHBOARD_USERNAME}|g" /home/supabase/docker/.env
-    sed -i "s|{{DASHBOARD_PASSWORD}}|${DASHBOARD_PASSWORD}|g" /home/supabase/docker/.env
-    sed -i "s|{{SECRET_KEY_BASE}}|${SECRET_KEY_BASE}|g" /home/supabase/docker/.env
-    sed -i "s|{{VAULT_ENC_KEY}}|${VAULT_ENC_KEY}|g" /home/supabase/docker/.env
-    sed -i "s|{{SUPABASE_SITE_URL}}|https://${SUPABASE_DOMAIN}|g" /home/supabase/docker/.env
-    sed -i "s|{{NETWORK}}|${NETWORK_NAME}|g" /home/supabase/docker/docker-compose.yml
-    sed -i "s|{{OPENAI_API_KEY}}|${OPENAI_API_KEY}|g" /home/supabase/docker/.env
-    sed -i "s|{{GEMINI_API_KEY}}|${GEMINI_API_KEY}|g" /home/supabase/docker/.env
-    sed -i "s|{{ANTHROPIC_API_KEY}}|${ANTHROPIC_API_KEY}|g" /home/supabase/docker/.env
-    sed -i "s|{{N8N_PRE_PROCESS_WEBHOOK_URL}}|${N8N_PRE_PROCESS_WEBHOOK_URL}|g" /home/supabase/docker/.env
-    sed -i "s|{{N8N_POST_PROCESS_WEBHOOK_URL}}|${N8N_POST_PROCESS_WEBHOOK_URL}|g" /home/supabase/docker/.env
-
     # Process monitoring files
     sed -i "s|{{NETWORK}}|${NETWORK_NAME}|g" /home/node-exporter/docker-compose.yml
     sed -i "s|{{NETWORK}}|${NETWORK_NAME}|g" /home/cadvisor/docker-compose.yml
-
     log "--> Cleaning up temporary directory..."
     rm -rf "$temp_dir"
     log "--> File setup complete."
 }
-
 setup_host_postgres() {
     log "### Phase 6: Setting up Host PostgreSQL for n8n ###"
     log "--> Configuring PostgreSQL to listen on all interfaces..."
@@ -321,7 +317,6 @@ setup_host_postgres() {
     fi
     log "--> PostgreSQL setup complete."
 }
-
 deploy_services() {
     log "### Phase 7: Deploying Docker Services ###"
     log "--> Starting n8n and Caddy services..."
@@ -333,7 +328,7 @@ deploy_services() {
     log "--> Starting cAdvisor..."
     cd /home/cadvisor && docker compose up -d
     log "--> Starting vibe-apps..."
-    cd /home/vibe-apps && docker compose up -d
+    cd /home/vibe-apps/vibe && docker compose up -d
     log "--> Configuring firewall..."
     ufw allow 22/tcp
     ufw allow 80/tcp
@@ -351,10 +346,9 @@ deploy_services() {
     cd /home/supabase/docker && docker compose up -d
     cd /home/node-exporter && docker compose up -d
     cd /home/cadvisor && docker compose up -d
-    cd /home/vibe-apps && docker compose up -d
+    cd /home/vibe-apps/vibe && docker compose up -d
     log "--> Service deployment complete."
 }
-
 # --- Main Execution Logic ---
 main() {
     preflight_checks
@@ -364,7 +358,6 @@ main() {
     setup_files
     setup_host_postgres
     deploy_services
-
     log "--- ✅ SETUP COMPLETE ---"
     log ""
     log "Please save the following generated credentials in a secure location:"
@@ -401,6 +394,5 @@ main() {
     log ""
     log "A full log of this session has been saved to: $LOG_FILE"
 }
-
 # Pipe all output of the main function to the log file and stdout
 main 2>&1 | tee -a "$LOG_FILE"
