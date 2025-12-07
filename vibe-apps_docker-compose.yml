@@ -18,7 +18,7 @@ services:
       - VITE_HOST=0.0.0.0
       # Explicitly tell Vite which port to use inside the container
       - VITE_PORT=5173
-      - ORIGIN=https://vibe.bitcreative.com.au
+      - ORIGIN=https://{{VIBE_DOMAIN}}
       - PUBLIC_SUPABASE_URL=${PUBLIC_SUPABASE_URL}
       - PUBLIC_SUPABASE_ANON_KEY=${PUBLIC_SUPABASE_ANON_KEY}
     networks:
