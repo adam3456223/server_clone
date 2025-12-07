@@ -26,6 +26,12 @@ generate_jwt() {
     local signature=$(echo -n "$unsigned_token" | openssl dgst -sha256 -hmac "$secret" -binary | base64 | tr -d '=' | tr '/+' '_-')
     echo "${unsigned_token}.${signature}"
 }
+
+# --- Helper function to escape strings for sed ---
+escape_for_sed() {
+    printf '%s\n' "$1" | sed -e 's/[\/&]/\\&/g' -e 's/$/\\/' | tr -d '\n' | sed 's/\\$//'
+}
+
 # --- Script Phases ---
 preflight_checks() {
     log "### Phase 1: Running Pre-flight Checks ###"
@@ -95,7 +101,6 @@ get_user_config() {
         read -p "Enter OpenAI API key (or press Enter to skip): " OPENAI_API_KEY
         read -p "Enter Gemini API key (or press Enter to skip): " GEMINI_API_KEY
         read -p "Enter Anthropic API key (or press Enter to skip): " ANTHROPIC_API_KEY
-
         read -p "Enter GitHub Personal Access Token (for private repos): " GITHUB_TOKEN
         
         log "--> Auto-generating required secrets..."
@@ -229,31 +234,39 @@ setup_files() {
     cp /tmp/supabase/docker/.env.example /home/supabase/docker/.env
     
     log "--> Configuring Supabase .env with client values..."
-    sed -i "s|POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=${SUPABASE_POSTGRES_PASSWORD}|" /home/supabase/docker/.env
-    sed -i "s|JWT_SECRET=.*|JWT_SECRET=${JWT_SECRET}|" /home/supabase/docker/.env
-    sed -i "s|ANON_KEY=.*|ANON_KEY=${ANON_KEY}|" /home/supabase/docker/.env
-    sed -i "s|SERVICE_ROLE_KEY=.*|SERVICE_ROLE_KEY=${SERVICE_ROLE_KEY}|" /home/supabase/docker/.env
-    sed -i "s|DASHBOARD_USERNAME=.*|DASHBOARD_USERNAME=${DASHBOARD_USERNAME}|" /home/supabase/docker/.env
-    sed -i "s|DASHBOARD_PASSWORD=.*|DASHBOARD_PASSWORD=${DASHBOARD_PASSWORD}|" /home/supabase/docker/.env
-    sed -i "s|SECRET_KEY_BASE=.*|SECRET_KEY_BASE=${SECRET_KEY_BASE}|" /home/supabase/docker/.env
-    sed -i "s|VAULT_ENC_KEY=.*|VAULT_ENC_KEY=${VAULT_ENC_KEY}|" /home/supabase/docker/.env
+    
+    # Escape password variables for sed
+    ESC_SUPABASE_POSTGRES_PASSWORD=$(escape_for_sed "$SUPABASE_POSTGRES_PASSWORD")
+    ESC_JWT_SECRET=$(escape_for_sed "$JWT_SECRET")
+    ESC_ANON_KEY=$(escape_for_sed "$ANON_KEY")
+    ESC_SERVICE_ROLE_KEY=$(escape_for_sed "$SERVICE_ROLE_KEY")
+    ESC_DASHBOARD_USERNAME=$(escape_for_sed "$DASHBOARD_USERNAME")
+    ESC_DASHBOARD_PASSWORD=$(escape_for_sed "$DASHBOARD_PASSWORD")
+    ESC_SECRET_KEY_BASE=$(escape_for_sed "$SECRET_KEY_BASE")
+    ESC_VAULT_ENC_KEY=$(escape_for_sed "$VAULT_ENC_KEY")
+    
+    sed -i "s|POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=${ESC_SUPABASE_POSTGRES_PASSWORD}|" /home/supabase/docker/.env
+    sed -i "s|JWT_SECRET=.*|JWT_SECRET=${ESC_JWT_SECRET}|" /home/supabase/docker/.env
+    sed -i "s|ANON_KEY=.*|ANON_KEY=${ESC_ANON_KEY}|" /home/supabase/docker/.env
+    sed -i "s|SERVICE_ROLE_KEY=.*|SERVICE_ROLE_KEY=${ESC_SERVICE_ROLE_KEY}|" /home/supabase/docker/.env
+    sed -i "s|DASHBOARD_USERNAME=.*|DASHBOARD_USERNAME=${ESC_DASHBOARD_USERNAME}|" /home/supabase/docker/.env
+    sed -i "s|DASHBOARD_PASSWORD=.*|DASHBOARD_PASSWORD=${ESC_DASHBOARD_PASSWORD}|" /home/supabase/docker/.env
+    sed -i "s|SECRET_KEY_BASE=.*|SECRET_KEY_BASE=${ESC_SECRET_KEY_BASE}|" /home/supabase/docker/.env
+    sed -i "s|VAULT_ENC_KEY=.*|VAULT_ENC_KEY=${ESC_VAULT_ENC_KEY}|" /home/supabase/docker/.env
     sed -i "s|SITE_URL=.*|SITE_URL=https://${SUPABASE_DOMAIN}|" /home/supabase/docker/.env
     sed -i "s|SUPABASE_PUBLIC_URL=.*|SUPABASE_PUBLIC_URL=https://${SUPABASE_DOMAIN}|" /home/supabase/docker/.env
     
     log "--> Adding API keys to Supabase .env..."
     cat >> /home/supabase/docker/.env << EOL
-
 # API Keys
 OPENAI_API_KEY=${OPENAI_API_KEY}
 GEMINI_API_KEY=${GEMINI_API_KEY}
 ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
 EOL
-
     log "--> Updating Supabase docker-compose.yml network..."
     cp ${script_dir}/supabase_docker-compose.yml /home/supabase/docker/docker-compose.yml
     sed -i "s|{{NETWORK}}|${NETWORK_NAME}|g" /home/supabase/docker/docker-compose.yml
     cp ${script_dir}/supabase_Dockerfile /home/supabase/docker/Dockerfile
-
     log "--> Cloning Supabase edge functions repository..."
     if [ -d "/home/supabase/docker/volumes/functions/.git" ]; then
         log "--> Functions repository already cloned. Skipping."
@@ -284,17 +297,27 @@ EOL
     sed -i "s|{{VIBE_DOMAIN}}|${VIBE_DOMAIN}|g" /home/vibe-apps/docker-compose.yml
     sed -i "s|{{NETWORK}}|${NETWORK_NAME}|g" /home/vibe-apps/docker-compose.yml
     log "--> Creating vibe-apps .env file..."
+    
+    # Escape ANON_KEY for use in .env file
+    ESC_ANON_KEY_ENV=$(escape_for_sed "$ANON_KEY")
+    
     cat > /home/vibe-apps/.env << EOL
 PUBLIC_SUPABASE_URL=https://${SUPABASE_DOMAIN}
 PUBLIC_SUPABASE_ANON_KEY=${ANON_KEY}
 EOL
     log "--> Configuring copied files with client variables..."
+    
+    # Escape all sensitive variables for sed
+    ESC_N8N_DB_PASSWORD=$(escape_for_sed "$N8N_DB_PASSWORD")
+    ESC_GRAFANA_ADMIN_PASSWORD=$(escape_for_sed "$GRAFANA_ADMIN_PASSWORD")
+    ESC_GRAFANA_RENDERING_TOKEN=$(escape_for_sed "$GRAFANA_RENDERING_TOKEN")
+    
     # Process n8n files
     sed -i "s|{{CLIENT_DOMAIN}}|${CLIENT_DOMAIN}|g" /home/n8n/.env
     sed -i "s|{{N8N_DOMAIN}}|${N8N_DOMAIN}|g" /home/n8n/.env
     sed -i "s|{{SSL_EMAIL}}|${SSL_EMAIL}|g" /home/n8n/.env
     sed -i "s|{{YOUR_DROPLET_IP}}|${SERVER_PUBLIC_IP}|g" /home/n8n/.env
-    sed -i "s|{{N8N_DB_PASSWORD}}|${N8N_DB_PASSWORD}|g" /home/n8n/.env
+    sed -i "s|{{N8N_DB_PASSWORD}}|${ESC_N8N_DB_PASSWORD}|g" /home/n8n/.env
     sed -i "s|{{GENERIC_TIMEZONE}}|${GENERIC_TIMEZONE}|g" /home/n8n/.env
     sed -i "s|{{NETWORK}}|${NETWORK_NAME}|g" /home/n8n/docker-compose.yml
     sed -i "s|{{N8N_DOMAIN}}|${N8N_DOMAIN}|g" /home/n8n/Caddyfile
@@ -318,8 +341,8 @@ EOL
     
     # Process Grafana config
     sed -i "s|{{GRAFANA_DOMAIN}}|${GRAFANA_DOMAIN}|g" /home/grafana/docker-compose.yml
-    sed -i "s|{{GRAFANA_ADMIN_PASSWORD}}|${GRAFANA_ADMIN_PASSWORD}|g" /home/grafana/docker-compose.yml
-    sed -i "s|{{GRAFANA_RENDERING_TOKEN}}|${GRAFANA_RENDERING_TOKEN}|g" /home/grafana/docker-compose.yml
+    sed -i "s|{{GRAFANA_ADMIN_PASSWORD}}|${ESC_GRAFANA_ADMIN_PASSWORD}|g" /home/grafana/docker-compose.yml
+    sed -i "s|{{GRAFANA_RENDERING_TOKEN}}|${ESC_GRAFANA_RENDERING_TOKEN}|g" /home/grafana/docker-compose.yml
     sed -i "s|{{NETWORK}}|${NETWORK_NAME}|g" /home/grafana/docker-compose.yml
     
     log "--> File setup complete."
@@ -335,10 +358,14 @@ setup_host_postgres() {
     log "--> Restarting PostgreSQL service..."
     systemctl restart postgresql
     log "--> Creating n8n database and user..."
+    
+    # Escape password for PostgreSQL
+    ESC_N8N_DB_PASSWORD_PG=$(printf '%s\n' "$N8N_DB_PASSWORD" | sed "s/'/''/g")
+    
     if sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='n8n_user'" | grep -q 1; then
         log "--> User 'n8n_user' already exists."
     else
-        sudo -u postgres psql -c "CREATE USER n8n_user WITH PASSWORD '$N8N_DB_PASSWORD';"
+        sudo -u postgres psql -c "CREATE USER n8n_user WITH PASSWORD '${ESC_N8N_DB_PASSWORD_PG}';"
     fi
     if sudo -u postgres psql -lqt | cut -d \| -f 1 | grep -qw n8n_db; then
         log "--> Database 'n8n_db' already exists."
