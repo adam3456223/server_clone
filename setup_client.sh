@@ -204,7 +204,7 @@ setup_files() {
     local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     
     log "--> Creating destination directories..."
-    mkdir -p /home/n8n /home/node-exporter /home/cadvisor /home/vibe-apps /home/prometheus/config /home/grafana/plugins
+    mkdir -p /home/n8n /home/node-exporter /home/cadvisor /home/prometheus/config /home/grafana/plugins
     
     log "--> Copying and renaming template files..."
     cp ${script_dir}/n8n_.env /home/n8n/.env
