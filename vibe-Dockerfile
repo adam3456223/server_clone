@@ -1,0 +1,38 @@
+# Dockerfile
+# Use a recent Node.js LTS version on Alpine Linux for a smaller image
+FROM node:18-alpine
+
+# Install all system dependencies in a single layer
+RUN apk add --no-cache python3 py3-pip python3-dev build-base gfortran openblas-dev pandoc cairo-dev
+
+# Create virtual environment and install packages
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# --- Python Dependency Caching ---
+# Copy only the requirements file first
+COPY requirements.txt .
+# Install Python packages from the requirements file in a single layer
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy package.json and lock file first to leverage Docker cache
+# Use * for lock file in case it's npm, yarn, or pnpm
+COPY package.json package-lock.json* ./
+
+# Install project dependencies
+# This will use the dependencies already downloaded if the lock file is unchanged
+RUN npm install
+RUN npm install python-shell
+
+# Copy the rest of the application code into the container
+COPY . .
+
+# The port Vite dev server runs on by default
+EXPOSE 5173
+
+# The command to run when the container starts
+# Runs the 'dev' script from package.json
+CMD ["npm", "run", "dev"]
