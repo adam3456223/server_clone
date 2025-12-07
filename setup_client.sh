@@ -9,7 +9,6 @@
 #
 # --- Configuration ---
 set -e # Exit immediately if a command exits with a non-zero status.
-readonly VIBE_APPS_REPO="https://github.com/adam3456223/vibe.git"
 readonly CLIENT_CONFIG_FILE="client_vars.env"
 readonly LOG_FILE="setup_$(date +%Y-%m-%d_%H-%M-%S).log"
 # --- Logging Function ---
@@ -267,7 +266,7 @@ EOL
     if [ -d "/home/vibe-apps/vibe" ]; then
         log "--> Vibe-apps directory already exists. Skipping clone."
     else
-        git clone "$VIBE_APPS_REPO" /home/vibe-apps/vibe
+        git clone "https://adam3456223:${GITHUB_TOKEN}@github.com/adam3456223/vibe.git" /home/vibe-apps/vibe
     fi
     
     log "--> Overwriting vibe-apps files with templates..."
