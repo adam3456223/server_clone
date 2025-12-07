@@ -216,7 +216,6 @@ setup_files() {
     cp "$temp_dir"/supabase_docker-compose.yml /home/supabase/docker/docker-compose.yml
     cp "$temp_dir"/node-exporter_docker-compose.yml /home/node-exporter/docker-compose.yml
     cp "$temp_dir"/cadvisor_docker-compose.yml /home/cadvisor/docker-compose.yml
-    cp "$temp_dir"/vibe-apps_docker-compose.yml /home/vibe-apps/docker-compose.yml
     
     log "--> Creating Supabase database init script directories..."
     mkdir -p /home/supabase/docker/volumes/db/{_supabase.sql,jwt.sql,logs.sql,pooler.sql,realtime.sql,roles.sql,webhooks.sql}
@@ -291,9 +290,6 @@ EOL
     # Process monitoring files
     sed -i "s|{{NETWORK}}|${NETWORK_NAME}|g" /home/node-exporter/docker-compose.yml
     sed -i "s|{{NETWORK}}|${NETWORK_NAME}|g" /home/cadvisor/docker-compose.yml
-
-    # Process vibe-apps files
-    sed -i "s|{{NETWORK}}|${NETWORK_NAME}|g" /home/vibe-apps/docker-compose.yml
 
     log "--> Cleaning up temporary directory..."
     rm -rf "$temp_dir"
