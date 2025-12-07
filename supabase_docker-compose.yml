@@ -390,8 +390,6 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY} # Needed for SDK initialization if used
       GEMINI_API_KEY: ${GEMINI_API_KEY} # Needed for SDK initialization if used
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY} # Needed for SDK initialization if used
-      N8N_PRE_PROCESS_WEBHOOK_URL: ${N8N_PRE_PROCESS_WEBHOOK_URL}
-      N8N_POST_PROCESS_WEBHOOK_URL: ${N8N_POST_PROCESS_WEBHOOK_URL} # Recommended as env var
     volumes:
       - ./volumes/functions:/home/deno/functions:Z
     command:
@@ -424,8 +422,6 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
-      N8N_PRE_PROCESS_WEBHOOK_URL: ${N8N_PRE_PROCESS_WEBHOOK_URL}
-      N8N_POST_PROCESS_WEBHOOK_URL: ${N8N_POST_PROCESS_WEBHOOK_URL}
     volumes:
       - ./volumes/functions:/home/deno/functions:Z
     command:
@@ -458,8 +454,6 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
-      N8N_PRE_PROCESS_WEBHOOK_URL: ${N8N_PRE_PROCESS_WEBHOOK_URL}
-      N8N_POST_PROCESS_WEBHOOK_URL: ${N8N_POST_PROCESS_WEBHOOK_URL}
     volumes:
       - ./volumes/functions:/home/deno/functions:Z
     command:
@@ -497,8 +491,6 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
-      N8N_PRE_PROCESS_WEBHOOK_URL: ${N8N_PRE_PROCESS_WEBHOOK_URL}
-      N8N_POST_PROCESS_WEBHOOK_URL: ${N8N_POST_PROCESS_WEBHOOK_URL}
     volumes:
       - ./volumes/functions:/home/deno/functions:Z
     command:
