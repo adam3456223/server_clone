@@ -62,28 +62,38 @@ get_user_config() {
     fi
     if [ "$config_is_valid" = false ]; then
         log "--> No valid config file found. Prompting for new values..."
-        read -p "Enter this server's public IP address: " SERVER_PUBLIC_IP
-        read -p "Enter the logging/monitoring server's IP address: " LOGGING_SERVER_IP
-        read -p "Enter the client's main domain name for n8n (e.g., client.com): " N8N_DOMAIN_NAME
-        read -p "Enter the subdomain for the n8n instance: " SUBDOMAIN; echo
+        
+        # Auto-detect server IP
+        SERVER_PUBLIC_IP=$(curl -s ifconfig.me)
+        log "--> Detected server public IP: $SERVER_PUBLIC_IP"
+        
+        # Hardcode logging server IP
+        LOGGING_SERVER_IP="68.183.29.60"
+        
+        read -p "Enter the client's main domain name (e.g., client.com): " N8N_DOMAIN_NAME
+        read -p "Enter the subdomain for n8n (e.g., n8n): " SUBDOMAIN
+        read -p "Enter the subdomain for Supabase (e.g., supabase): " SUPABASE_SUBDOMAIN
+        read -p "Enter the subdomain for vibe-apps (e.g., vibe): " VIBE_SUBDOMAIN
+        read -p "Enter the subdomain for functions (e.g., functions): " FUNCTIONS_SUBDOMAIN
+        
+        # Build full domains
+        SUPABASE_DOMAIN="${SUPABASE_SUBDOMAIN}.${N8N_DOMAIN_NAME}"
+        VIBE_DOMAIN="${VIBE_SUBDOMAIN}.${N8N_DOMAIN_NAME}"
+        FUNCTIONS_DOMAIN="${FUNCTIONS_SUBDOMAIN}.${N8N_DOMAIN_NAME}"
+        
         read -p "Enter the desired timezone (e.g., Australia/Melbourne): " GENERIC_TIMEZONE
         read -sp "Enter the password for the n8n database user: " N8N_DB_PASSWORD; echo
-        read -p "Enter the Supabase full domain (including subdomain) but without https:// (e.g., supabase.client.com): " SUPABASE_DOMAIN
-        read -p "Enter the vibe-apps full domain but without https:// (e.g., vibe.client.com): " VIBE_DOMAIN
-        read -p "Enter the functions full domain but without https:// (e.g., functions.client.com): " FUNCTIONS_DOMAIN
         read -p "Enter the SSL contact email: " SSL_EMAIL
         read -p "Enter the desired username for the Supabase dashboard admin: " DASHBOARD_USERNAME; echo
         read -sp "Enter the desired password for the Supabase dashboard admin: " DASHBOARD_PASSWORD; echo
         read -p "Enter the desired Docker network name (e.g., bitcreative): " NETWORK_NAME
         read -p "Enter GitHub Personal Access Token (for supabase-functions repo): " GITHUB_TOKEN
+        
         log "--> Prompting for API keys (leave blank to skip)..."
         read -p "Enter OpenAI API key (or press Enter to skip): " OPENAI_API_KEY
         read -p "Enter Gemini API key (or press Enter to skip): " GEMINI_API_KEY
         read -p "Enter Anthropic API key (or press Enter to skip): " ANTHROPIC_API_KEY
         
-        log "--> Prompting for n8n webhook URLs (leave blank to configure later)..."
-        read -p "Enter n8n pre-process webhook URL (or press Enter to skip): " N8N_PRE_PROCESS_WEBHOOK_URL
-        read -p "Enter n8n post-process webhook URL (or press Enter to skip): " N8N_POST_PROCESS_WEBHOOK_URL
         log "--> Auto-generating required secrets..."
         SUPABASE_POSTGRES_PASSWORD=$(openssl rand -hex 32)
         JWT_SECRET=$(openssl rand -hex 32)
