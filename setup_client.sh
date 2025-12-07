@@ -31,7 +31,7 @@ generate_jwt() {
 preflight_checks() {
     log "### Phase 1: Running Pre-flight Checks ###"
     if [ "$EUID" -ne 0 ]; then log "ERROR: This script must be run as root."; exit 1; fi
-    for cmd in docker git ufw openssl curl htpasswd; do
+    for cmd in docker git ufw openssl curl; do
         if ! command -v "$cmd" &> /dev/null; then log "ERROR: Required command '$cmd' is not installed."; exit 1; fi
     done
     if ! docker compose version &> /dev/null; then log "ERROR: Docker Compose V2 plugin is not installed."; exit 1; fi
