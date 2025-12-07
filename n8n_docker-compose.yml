@@ -1,0 +1,88 @@
+version: "3.7"
+
+services:
+  caddy:
+    image: caddy:latest
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_data:/data
+      - ./Caddyfile:/etc/caddy/Caddyfile
+    command: caddy run --config /etc/caddy/Caddyfile
+    networks:
+      - {{NETWORK}}
+
+  n8n:
+#    image: docker.n8n.io/n8nio/n8n:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    deploy:
+      resources:
+        limits:
+          memory: 1.5G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+    container_name: n8n
+    restart: always
+    environment:
+      - DB_TYPE=postgresdb
+      - DB_TABLE_PREFIX=n8n_
+      - DB_POSTGRESDB_DATABASE=n8n_db
+      - DB_POSTGRESDB_HOST=${YOUR_DROPLET_IP}
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_USER=n8n_user
+      - DB_POSTGRESDB_PASSWORD=${DB_PASSWORD}
+      - DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED=false
+      - N8N_HOST=${SUBDOMAIN}.${DOMAIN_NAME}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - NODE_ENV=production
+      - WEBHOOK_URL=https://${SUBDOMAIN}.${DOMAIN_NAME}/
+      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
+      - NODE_FUNCTION_ALLOW_EXTERNAL=*
+      - NODE_FUNCTION_ALLOW_BUILTIN=*
+      - N8N_EMAIL_MODE=smtp
+      - N8N_SMTP_PORT=2525
+      - N8N_SMTP_SSL=false
+      - N8N_METRICS=true
+      - N8N_METRICS_INCLUDE_ROUTES=true  # Optional: includes route-specific metrics
+      - N8N_METRICS_PREFIX=n8n_          # Optional: adds a prefix to metric names
+      - QUEUE_HEALTH_CHECK_ACTIVE=true
+      - N8N_METRICS_EXECUTIONS=true
+      - N8N_METRICS_EXECUTIONS_DETAIL=1  # Include details for executions (0-2, where 2 is most detailed)
+      - N8N_METRICS_HISTOGRAM_BUCKETS=10,100,500,1000,2500,5000,10000  # Duration buckets in ms
+
+      - N8N_CONCURRENCY_PRODUCTION_LIMIT=${N8N_CONCURRENCY_PRODUCTION_LIMIT}
+      - N8N_LOG_OUTPUT=${N8N_LOG_OUTPUT}
+      - N8N_LOG_LEVEL=${N8N_LOG_LEVEL}
+      - EXECUTIONS_DATA_PRUNE=${EXECUTIONS_DATA_PRUNE}
+      - EXECUTIONS_DATA_MAX_AGE=${EXECUTIONS_DATA_MAX_AGE}
+      - EXECUTIONS_DATA_PRUNE_MAX_COUNT=${EXECUTIONS_DATA_PRUNE_MAX_COUNT}
+      - N8N_PAYLOAD_SIZE_MAX=128
+      - N8N_DEFAULT_BINARY_DATA_MODE=filesystem
+      - N8N_BINARY_DATA_TTL=24  # Delete binary data after 24 hours
+      - NODE_OPTIONS=--max-old-space-size=1024
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ${DATA_FOLDER}/local_files:/files
+    labels:
+      vector.log_type: "n8n"
+      vector.service: "n8n"
+    networks:
+      - {{NETWORK}}
+
+networks:
+  {{NETWORK}}:
+    name: {{NETWORK}}
+    external: true
+
+volumes:
+  caddy_data:
+    external: true
+  n8n_data:
+    external: true
