@@ -67,7 +67,7 @@ get_user_config() {
         # Hardcode logging server IP
         LOGGING_SERVER_IP="68.183.29.60"
         
-        read -p "Enter the client's main domain name (e.g., client.com): " N8N_DOMAIN_NAME
+        read -p "Enter the client's main domain (e.g., client.com): " CLIENT_DOMAIN
         read -p "Enter the subdomain for n8n (e.g., n8n): " SUBDOMAIN
         read -p "Enter the subdomain for Supabase (e.g., supabase): " SUPABASE_SUBDOMAIN
         read -p "Enter the subdomain for vibe-apps (e.g., vibe): " VIBE_SUBDOMAIN
@@ -76,11 +76,11 @@ get_user_config() {
         read -p "Enter the subdomain for Grafana (e.g., grafana): " GRAFANA_SUBDOMAIN
         
         # Build full domains
-        SUPABASE_DOMAIN="${SUPABASE_SUBDOMAIN}.${N8N_DOMAIN_NAME}"
-        VIBE_DOMAIN="${VIBE_SUBDOMAIN}.${N8N_DOMAIN_NAME}"
-        FUNCTIONS_DOMAIN="${FUNCTIONS_SUBDOMAIN}.${N8N_DOMAIN_NAME}"
-        PROMETHEUS_DOMAIN="${PROMETHEUS_SUBDOMAIN}.${N8N_DOMAIN_NAME}"
-        GRAFANA_DOMAIN="${GRAFANA_SUBDOMAIN}.${N8N_DOMAIN_NAME}"
+        SUPABASE_DOMAIN="${SUPABASE_SUBDOMAIN}.${CLIENT_DOMAIN}"
+        VIBE_DOMAIN="${VIBE_SUBDOMAIN}.${CLIENT_DOMAIN}"
+        FUNCTIONS_DOMAIN="${FUNCTIONS_SUBDOMAIN}.${CLIENT_DOMAIN}"
+        PROMETHEUS_DOMAIN="${PROMETHEUS_SUBDOMAIN}.${CLIENT_DOMAIN}"
+        GRAFANA_DOMAIN="${GRAFANA_SUBDOMAIN}.${CLIENT_DOMAIN}"
         
         read -p "Enter the desired timezone (e.g., Australia/Melbourne): " GENERIC_TIMEZONE
         read -sp "Enter the password for the n8n database user: " N8N_DB_PASSWORD; echo
@@ -109,7 +109,7 @@ get_user_config() {
         log "--> Saving configuration to '$CLIENT_CONFIG_FILE' for future use."
         cat > "$CLIENT_CONFIG_FILE" << EOL
 # Client Server Configuration
-N8N_DOMAIN_NAME="${N8N_DOMAIN_NAME}"
+N8N_DOMAIN_NAME="${CLIENT_DOMAIN}"
 SUBDOMAIN="${SUBDOMAIN}"
 NETWORK_NAME="${NETWORK_NAME}"
 SUPABASE_DOMAIN="${SUPABASE_DOMAIN}"
