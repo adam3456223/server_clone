@@ -248,8 +248,8 @@ ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
 EOL
     
     log "--> Updating Supabase docker-compose.yml network..."
-    sed -i "s|default:|${NETWORK_NAME}:|g" /home/supabase/docker/docker-compose.yml
-    sed -i "s|name: .*|name: ${NETWORK_NAME}|g" /home/supabase/docker/docker-compose.yml
+    sed -i "/^networks:/,/^[^ ]/ s/default:/${NETWORK_NAME}:/" /home/supabase/docker/docker-compose.yml
+    sed -i "/^networks:/,$ s/name: .*/name: ${NETWORK_NAME}/" /home/supabase/docker/docker-compose.yml
     
     log "--> Cloning Supabase edge functions repository..."
     mkdir -p /home/supabase/docker/volumes
