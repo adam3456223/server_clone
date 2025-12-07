@@ -254,9 +254,10 @@ EOL
 
     log "--> Cloning Supabase edge functions repository..."
     mkdir -p /home/supabase/docker/volumes
-    if [ -d "/home/supabase/docker/volumes/functions" ]; then
-        log "--> Functions directory already exists. Skipping clone."
+    if [ -d "/home/supabase/docker/volumes/functions/.git" ]; then
+        log "--> Functions repository already cloned. Skipping."
     else
+        rm -rf /home/supabase/docker/volumes/functions
         git clone "https://${GITHUB_TOKEN}@github.com/adam3456223/supabase-functions.git" /home/supabase/docker/volumes/functions
     fi
     
@@ -264,9 +265,10 @@ EOL
     rm -rf /tmp/supabase
     
     log "--> Cloning vibe-apps repository..."
-    if [ -d "/home/vibe-apps" ]; then
-        log "--> Vibe-apps directory already exists. Skipping clone."
+    if [ -d "/home/vibe-apps/.git" ]; then
+        log "--> Vibe-apps repository already cloned. Skipping."
     else
+        rm -rf /home/vibe-apps
         git clone "https://${GITHUB_TOKEN}@github.com/adam3456223/vibe.git" /home/vibe-apps
     fi
     
