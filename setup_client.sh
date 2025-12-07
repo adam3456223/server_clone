@@ -249,9 +249,7 @@ EOL
     
     log "--> Updating Supabase docker-compose.yml network..."
     cp ${script_dir}/supabase_docker-compose.yml /home/supabase/docker/docker-compose.yml
-    sed -i "/^networks:/,/^[^ ]/ s/default:/${NETWORK_NAME}:/" /home/supabase/docker/docker-compose.yml
-    sed -i "/^networks:/,$ s/name: .*/name: ${NETWORK_NAME}/" /home/supabase/docker/docker-compose.yml
-    
+    sed -i "s|{{NETWORK}}|${NETWORK_NAME}|g" /home/supabase/docker/docker-compose.yml    
     log "--> Cloning Supabase edge functions repository..."
     mkdir -p /home/supabase/docker/volumes
     if [ -d "/home/supabase/docker/volumes/functions" ]; then
