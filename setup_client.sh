@@ -257,7 +257,7 @@ EOL
     if [ -d "/home/supabase/docker/volumes/functions" ]; then
         log "--> Functions directory already exists. Skipping clone."
     else
-        git clone "https://adam3456223:${GITHUB_TOKEN}@github.com/adam3456223/supabase-functions.git" /home/supabase/docker/volumes/functions
+        git clone "https://${GITHUB_TOKEN}@github.com/adam3456223/supabase-functions.git" /home/supabase/docker/volumes/functions
     fi
     
     log "--> Cleaning up Supabase temp directory..."
@@ -267,7 +267,7 @@ EOL
     if [ -d "/home/vibe-apps" ]; then
         log "--> Vibe-apps directory already exists. Skipping clone."
     else
-        git clone "https://adam3456223:${GITHUB_TOKEN}@github.com/adam3456223/vibe.git" /home/vibe-apps
+        git clone "https://${GITHUB_TOKEN}@github.com/adam3456223/vibe.git" /home/vibe-apps
     fi
     
     log "--> Overwriting vibe-apps files with templates..."
