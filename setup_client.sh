@@ -253,11 +253,11 @@ EOL
     cp ${script_dir}/supabase_Dockerfile /home/supabase/docker/Dockerfile
 
     log "--> Cloning Supabase edge functions repository..."
-    mkdir -p /home/supabase/docker/volumes
     if [ -d "/home/supabase/docker/volumes/functions/.git" ]; then
         log "--> Functions repository already cloned. Skipping."
     else
-        rm -rf /home/supabase/docker/volumes/functions
+        log "--> Cloning edge functions into existing directory..."
+        rm -rf /home/supabase/docker/volumes/functions/*
         git clone "https://${GITHUB_TOKEN}@github.com/adam3456223/supabase-functions.git" /home/supabase/docker/volumes/functions
     fi
     
