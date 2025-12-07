@@ -1,10 +1,10 @@
 #!/bin/bash
 #
 # Bit Creative - Client Server Setup Script
-# Version: 2.0
+# Version: 2.1
 # Author: Adam Fox & eVA
 # Description: This script automates the setup of a new client server with
-#              n8n, Supabase, Caddy, monitoring (node-exporter, cAdvisor),
+#              n8n, Supabase, Caddy, monitoring (Prometheus, Grafana, node-exporter, cAdvisor),
 #              and vibe-apps, using a standardized template repository.
 #
 # --- Configuration ---
@@ -31,7 +31,7 @@ generate_jwt() {
 preflight_checks() {
     log "### Phase 1: Running Pre-flight Checks ###"
     if [ "$EUID" -ne 0 ]; then log "ERROR: This script must be run as root."; exit 1; fi
-    for cmd in docker git ufw openssl curl; do
+    for cmd in docker git ufw openssl curl htpasswd; do
         if ! command -v "$cmd" &> /dev/null; then log "ERROR: Required command '$cmd' is not installed."; exit 1; fi
     done
     if ! docker compose version &> /dev/null; then log "ERROR: Docker Compose V2 plugin is not installed."; exit 1; fi
@@ -47,6 +47,7 @@ get_user_config() {
             "N8N_DOMAIN_NAME" "NETWORK_NAME" "SUPABASE_DOMAIN" "SSL_EMAIL" "SERVER_PUBLIC_IP" "LOGGING_SERVER_IP"
             "GENERIC_TIMEZONE" "N8N_DB_PASSWORD" "SUBDOMAIN" "SUPABASE_POSTGRES_PASSWORD" "JWT_SECRET" "ANON_KEY" "SERVICE_ROLE_KEY"
             "DASHBOARD_USERNAME" "DASHBOARD_PASSWORD" "SECRET_KEY_BASE" "VAULT_ENC_KEY" "VIBE_DOMAIN" "FUNCTIONS_DOMAIN"
+            "PROMETHEUS_DOMAIN" "GRAFANA_DOMAIN" "GRAFANA_ADMIN_PASSWORD"
             "OPENAI_API_KEY" "GEMINI_API_KEY" "ANTHROPIC_API_KEY" "GITHUB_TOKEN"
         )
         config_is_valid=true
@@ -73,17 +74,22 @@ get_user_config() {
         read -p "Enter the subdomain for Supabase (e.g., supabase): " SUPABASE_SUBDOMAIN
         read -p "Enter the subdomain for vibe-apps (e.g., vibe): " VIBE_SUBDOMAIN
         read -p "Enter the subdomain for functions (e.g., functions): " FUNCTIONS_SUBDOMAIN
+        read -p "Enter the subdomain for Prometheus (e.g., prometheus): " PROMETHEUS_SUBDOMAIN
+        read -p "Enter the subdomain for Grafana (e.g., grafana): " GRAFANA_SUBDOMAIN
         
         # Build full domains
         SUPABASE_DOMAIN="${SUPABASE_SUBDOMAIN}.${N8N_DOMAIN_NAME}"
         VIBE_DOMAIN="${VIBE_SUBDOMAIN}.${N8N_DOMAIN_NAME}"
         FUNCTIONS_DOMAIN="${FUNCTIONS_SUBDOMAIN}.${N8N_DOMAIN_NAME}"
+        PROMETHEUS_DOMAIN="${PROMETHEUS_SUBDOMAIN}.${N8N_DOMAIN_NAME}"
+        GRAFANA_DOMAIN="${GRAFANA_SUBDOMAIN}.${N8N_DOMAIN_NAME}"
         
         read -p "Enter the desired timezone (e.g., Australia/Melbourne): " GENERIC_TIMEZONE
         read -sp "Enter the password for the n8n database user: " N8N_DB_PASSWORD; echo
         read -p "Enter the SSL contact email: " SSL_EMAIL
         read -p "Enter the desired username for the Supabase dashboard admin: " DASHBOARD_USERNAME; echo
         read -sp "Enter the desired password for the Supabase dashboard admin: " DASHBOARD_PASSWORD; echo
+        read -sp "Enter the desired password for Grafana admin: " GRAFANA_ADMIN_PASSWORD; echo
         read -p "Enter the desired Docker network name (e.g., bitcreative): " NETWORK_NAME
         read -p "Enter GitHub Personal Access Token (for private repos): " GITHUB_TOKEN
         
@@ -97,6 +103,7 @@ get_user_config() {
         JWT_SECRET=$(openssl rand -hex 32)
         SECRET_KEY_BASE=$(openssl rand -hex 64)
         VAULT_ENC_KEY=$(openssl rand -hex 32)
+        GRAFANA_RENDERING_TOKEN=$(openssl rand -hex 32)
         
         log "--> Generating Supabase JWT keys..."
         ANON_KEY=$(generate_jwt '{"role":"anon"}' "$JWT_SECRET")
@@ -110,6 +117,8 @@ NETWORK_NAME=${NETWORK_NAME}
 SUPABASE_DOMAIN=${SUPABASE_DOMAIN}
 VIBE_DOMAIN=${VIBE_DOMAIN}
 FUNCTIONS_DOMAIN=${FUNCTIONS_DOMAIN}
+PROMETHEUS_DOMAIN=${PROMETHEUS_DOMAIN}
+GRAFANA_DOMAIN=${GRAFANA_DOMAIN}
 SSL_EMAIL=${SSL_EMAIL}
 SERVER_PUBLIC_IP=${SERVER_PUBLIC_IP}
 LOGGING_SERVER_IP=${LOGGING_SERVER_IP}
@@ -121,6 +130,8 @@ ANON_KEY=${ANON_KEY}
 SERVICE_ROLE_KEY=${SERVICE_ROLE_KEY}
 DASHBOARD_USERNAME=${DASHBOARD_USERNAME}
 DASHBOARD_PASSWORD=${DASHBOARD_PASSWORD}
+GRAFANA_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+GRAFANA_RENDERING_TOKEN=${GRAFANA_RENDERING_TOKEN}
 SECRET_KEY_BASE=${SECRET_KEY_BASE}
 VAULT_ENC_KEY=${VAULT_ENC_KEY}
 OPENAI_API_KEY=${OPENAI_API_KEY}
@@ -154,7 +165,7 @@ EOL
     
     log "--> Installing required packages..."
     apt-get update
-    apt-get install -y postgresql postgresql-contrib net-tools
+    apt-get install -y postgresql postgresql-contrib net-tools apache2-utils
     
     log "--> Configuring Docker daemon for metrics and logging..."
     mkdir -p /etc/docker
@@ -180,7 +191,7 @@ setup_docker_env() {
     else
         log "--> Docker network '$NETWORK_NAME' already exists. Skipping."
     fi
-    for volume in caddy_data n8n_data; do
+    for volume in caddy_data n8n_data grafana_data prometheus_data; do
         if ! docker volume ls | grep -q "$volume"; then
             log "--> Creating external Docker volume: $volume"
             docker volume create "$volume"
@@ -198,7 +209,7 @@ setup_files() {
     git clone "https://adam3456223:${GITHUB_TOKEN}@github.com/adam3456223/docker.git" "$temp_dir"
     
     log "--> Creating destination directories..."
-    mkdir -p /home/n8n /home/node-exporter /home/cadvisor /home/vibe-apps
+    mkdir -p /home/n8n /home/node-exporter /home/cadvisor /home/vibe-apps /home/prometheus/config /home/grafana/plugins
     
     log "--> Copying and renaming template files..."
     cp "$temp_dir"/n8n_.env /home/n8n/.env
@@ -207,6 +218,9 @@ setup_files() {
     cp "$temp_dir"/Caddyfile /home/n8n/Caddyfile
     cp "$temp_dir"/node-exporter_docker-compose.yml /home/node-exporter/docker-compose.yml
     cp "$temp_dir"/cadvisor_docker-compose.yml /home/cadvisor/docker-compose.yml
+    cp "$temp_dir"/prometheus_docker-compose.yml /home/prometheus/docker-compose.yml
+    cp "$temp_dir"/prometheus.yml /home/prometheus/config/prometheus.yml
+    cp "$temp_dir"/grafana_docker-compose.yml /home/grafana/docker-compose.yml
     
     log "--> Setting up Supabase from official repository..."
     cd /tmp
@@ -287,10 +301,26 @@ EOL
     sed -i "s|{{SUPABASE_DOMAIN}}|${SUPABASE_DOMAIN}|g" /home/n8n/Caddyfile
     sed -i "s|{{VIBE_DOMAIN}}|${VIBE_DOMAIN}|g" /home/n8n/Caddyfile
     sed -i "s|{{FUNCTIONS_DOMAIN}}|${FUNCTIONS_DOMAIN}|g" /home/n8n/Caddyfile
+    sed -i "s|{{PROMETHEUS_DOMAIN}}|${PROMETHEUS_DOMAIN}|g" /home/n8n/Caddyfile
+    sed -i "s|{{GRAFANA_DOMAIN}}|${GRAFANA_DOMAIN}|g" /home/n8n/Caddyfile
     sed -i "s|{{LOGGING_SERVER_IP}}|${LOGGING_SERVER_IP}|g" /home/n8n/Caddyfile
+    
     # Process monitoring files
     sed -i "s|{{NETWORK}}|${NETWORK_NAME}|g" /home/node-exporter/docker-compose.yml
     sed -i "s|{{NETWORK}}|${NETWORK_NAME}|g" /home/cadvisor/docker-compose.yml
+    sed -i "s|{{NETWORK}}|${NETWORK_NAME}|g" /home/prometheus/docker-compose.yml
+    sed -i "s|{{NETWORK}}|${NETWORK_NAME}|g" /home/grafana/docker-compose.yml
+    
+    # Process Prometheus config
+    sed -i "s|{{SUBDOMAIN}}|${SUBDOMAIN}|g" /home/prometheus/config/prometheus.yml
+    sed -i "s|{{N8N_DOMAIN_NAME}}|${N8N_DOMAIN_NAME}|g" /home/prometheus/config/prometheus.yml
+    
+    # Process Grafana config
+    sed -i "s|{{GRAFANA_DOMAIN}}|${GRAFANA_DOMAIN}|g" /home/grafana/docker-compose.yml
+    sed -i "s|{{GRAFANA_ADMIN_PASSWORD}}|${GRAFANA_ADMIN_PASSWORD}|g" /home/grafana/docker-compose.yml
+    sed -i "s|{{GRAFANA_RENDERING_TOKEN}}|${GRAFANA_RENDERING_TOKEN}|g" /home/grafana/docker-compose.yml
+    sed -i "s|{{NETWORK}}|${NETWORK_NAME}|g" /home/grafana/docker-compose.yml
+    
     log "--> Cleaning up temporary directory..."
     rm -rf "$temp_dir"
     log "--> File setup complete."
@@ -329,6 +359,10 @@ deploy_services() {
     cd /home/node-exporter && docker compose up -d
     log "--> Starting cAdvisor..."
     cd /home/cadvisor && docker compose up -d
+    log "--> Starting Prometheus..."
+    cd /home/prometheus && docker compose up -d
+    log "--> Starting Grafana..."
+    cd /home/grafana && docker compose up -d
     log "--> Starting vibe-apps..."
     cd /home/vibe-apps/vibe && docker compose up -d
     log "--> Configuring firewall..."
@@ -340,6 +374,7 @@ deploy_services() {
     ufw allow from "$LOGGING_SERVER_IP" to any port 8080 proto tcp
     ufw allow from "$LOGGING_SERVER_IP" to any port 9323 proto tcp
     ufw allow from "$LOGGING_SERVER_IP" to any port 9187 proto tcp
+    ufw allow from "$LOGGING_SERVER_IP" to any port 9090 proto tcp
     ufw --force enable
     log "--> Restarting Docker to apply daemon configuration..."
     systemctl restart docker
@@ -348,6 +383,8 @@ deploy_services() {
     cd /home/supabase/docker && docker compose up -d
     cd /home/node-exporter && docker compose up -d
     cd /home/cadvisor && docker compose up -d
+    cd /home/prometheus && docker compose up -d
+    cd /home/grafana && docker compose up -d
     cd /home/vibe-apps/vibe && docker compose up -d
     log "--> Service deployment complete."
 }
@@ -372,6 +409,7 @@ main() {
     log "Supabase JWT Secret:        $JWT_SECRET"
     log "Supabase Anon Key:          $ANON_KEY"
     log "Supabase Service Role Key:  $SERVICE_ROLE_KEY"
+    log "Grafana Admin Password:     $GRAFANA_ADMIN_PASSWORD"
     log "--------------------------------------------------"
     log ""
     log "Your services should be available shortly at:"
@@ -380,12 +418,15 @@ main() {
     log "Supabase:           https://${SUPABASE_DOMAIN}"
     log "Vibe Apps:          https://${VIBE_DOMAIN}"
     log "Edge Functions:     https://${FUNCTIONS_DOMAIN}"
+    log "Prometheus:         https://${PROMETHEUS_DOMAIN}"
+    log "Grafana:            https://${GRAFANA_DOMAIN}"
     log ""
     log "Monitoring endpoints (accessible from ${LOGGING_SERVER_IP}):"
     log "node-exporter:      ${SERVER_PUBLIC_IP}:9100"
     log "cAdvisor:           ${SERVER_PUBLIC_IP}:8080"
     log "Docker metrics:     ${SERVER_PUBLIC_IP}:9323"
     log "Postgres exporter:  ${SERVER_PUBLIC_IP}:9187"
+    log "Prometheus:         ${SERVER_PUBLIC_IP}:9090"
     log ""
     log "MANUAL NEXT STEPS:"
     log "1. Log in to the n8n UI and configure all necessary credentials."
@@ -393,6 +434,7 @@ main() {
     log "3. Configure your Prometheus server to scrape this client's metrics."
     log "4. If you skipped API keys, add them to /home/supabase/docker/.env and restart services."
     log "5. Verify all services are running correctly with 'docker ps -a'."
+    log "6. Log in to Grafana and configure Prometheus as a data source."
     log ""
     log "A full log of this session has been saved to: $LOG_FILE"
 }
