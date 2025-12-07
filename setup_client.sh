@@ -207,15 +207,15 @@ setup_files() {
     mkdir -p /home/n8n /home/node-exporter /home/cadvisor /home/vibe-apps /home/prometheus/config /home/grafana/plugins
     
     log "--> Copying and renaming template files..."
-    cp "$temp_dir"/n8n_.env /home/n8n/.env
-    cp "$temp_dir"/n8n_Dockerfile /home/n8n/Dockerfile
-    cp "$temp_dir"/n8n_docker-compose.yml /home/n8n/docker-compose.yml
-    cp "$temp_dir"/Caddyfile /home/n8n/Caddyfile
-    cp "$temp_dir"/node-exporter_docker-compose.yml /home/node-exporter/docker-compose.yml
-    cp "$temp_dir"/cadvisor_docker-compose.yml /home/cadvisor/docker-compose.yml
-    cp "$temp_dir"/prometheus_docker-compose.yml /home/prometheus/docker-compose.yml
-    cp "$temp_dir"/prometheus.yml /home/prometheus/config/prometheus.yml
-    cp "$temp_dir"/grafana_docker-compose.yml /home/grafana/docker-compose.yml
+    cp ./n8n_.env /home/n8n/.env
+    cp ./n8n_Dockerfile /home/n8n/Dockerfile
+    cp ./n8n_docker-compose.yml /home/n8n/docker-compose.yml
+    cp ./Caddyfile /home/n8n/Caddyfile
+    cp ./node-exporter_docker-compose.yml /home/node-exporter/docker-compose.yml
+    cp ./cadvisor_docker-compose.yml /home/cadvisor/docker-compose.yml
+    cp ./prometheus_docker-compose.yml /home/prometheus/docker-compose.yml
+    cp ./prometheus.yml /home/prometheus/config/prometheus.yml
+    cp ./grafana_docker-compose.yml /home/grafana/docker-compose.yml
     
     log "--> Setting up Supabase from official repository..."
     cd /tmp
@@ -248,7 +248,7 @@ ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
 EOL
     
     log "--> Updating Supabase docker-compose.yml network..."
-    cp "$temp_dir"/supabase_docker-compose.yml /home/supabase/docker/docker-compose.yml
+    cp ./supabase_docker-compose.yml /home/supabase/docker/docker-compose.yml
     sed -i "/^networks:/,/^[^ ]/ s/default:/${NETWORK_NAME}:/" /home/supabase/docker/docker-compose.yml
     sed -i "/^networks:/,$ s/name: .*/name: ${NETWORK_NAME}/" /home/supabase/docker/docker-compose.yml
     
@@ -271,8 +271,8 @@ EOL
     fi
     
     log "--> Overwriting vibe-apps files with templates..."
-    cp "$temp_dir"/vibe-apps_docker-compose.yml /home/vibe-apps/docker-compose.yml
-    cp "$temp_dir"/vibe-apps_vite.config.js /home/vibe-apps/vite.config.js
+    cp ./vibe-apps_docker-compose.yml /home/vibe-apps/docker-compose.yml
+    cp ./vibe-apps_vite.config.js /home/vibe-apps/vite.config.js
     
     log "--> Configuring vibe-apps template files..."
     sed -i "s|{{VIBE_DOMAIN}}|${VIBE_DOMAIN}|g" /home/vibe-apps/vite.config.js
@@ -317,8 +317,6 @@ EOL
     sed -i "s|{{GRAFANA_RENDERING_TOKEN}}|${GRAFANA_RENDERING_TOKEN}|g" /home/grafana/docker-compose.yml
     sed -i "s|{{NETWORK}}|${NETWORK_NAME}|g" /home/grafana/docker-compose.yml
     
-    log "--> Cleaning up temporary directory..."
-    rm -rf "$temp_dir"
     log "--> File setup complete."
 }
 setup_host_postgres() {
